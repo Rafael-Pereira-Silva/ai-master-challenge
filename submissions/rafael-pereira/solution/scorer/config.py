@@ -34,6 +34,12 @@ TOP_FRAC = 0.20
 RANDOM_SEEDS = 200
 BOOTSTRAP_REPS = 1000
 KNOT_GRID = range(0, 181, 5)
+CRITERION_TIE_TOL = 0.01  # até 1 ponto percentual de receita capturada é empate (e empate não vence)
+ADJUST_BIN_DAYS = 15  # ajuste único pré-definido: faixas de idade de 15 dias...
+ADJUST_PSEUDO_COUNT = 20  # ...com pseudo-contagem de 20 deals rumo à taxa média de treino
+ATTRIBUTE_L2 = 1.0  # penalidade L2 nos coeficientes do atributo (teste de atributos)
+FOQUE_AGE_BANDS = ((0, 30), (31, 60), (61, None))  # faixas de idade para o achado "Foque 61+ dias"
+CATEGORIES = ("Foque", "Reative", "Limpe", "Qualifique")  # as 4 listas de ação, na ordem de exibição
 
 # --- Critérios pré-definidos das investigações do bloco 2 ---------------------------------
 # 2a: o win rate do 1º trimestre é artefato de recorte se as três condições valerem.
@@ -59,6 +65,7 @@ ALLOWED_CONSTANTS = {
     100: "escala do score (0 a 100)",
     KNOT_GRID[-1]: "180 dias: maior joelho testado na curva de idade",
     RANDOM_SEEDS: "200 sorteios do baseline aleatório",
+    RANDOM_SEEDS - 1: "última semente do baseline aleatório (sementes 0 a 199)",
     BOOTSTRAP_REPS: "1.000 reamostragens do bootstrap",
     RATIO_MEAN_RANGE[0]: "limite inferior da razão close_value/tabela média (2c)",
     RATIO_MEAN_RANGE[1]: "limite superior da razão close_value/tabela média (2c)",
@@ -66,4 +73,5 @@ ALLOWED_CONSTANTS = {
 
 # --- Documentos cobertos por `python -m scorer.docs` e pelo teste de números ----------------
 # (SCORING.md, MODEL_CARD.md e README.md entram nos blocos 3 e 5.)
-COVERED_DOCS = [DOCS_DIR / "DATA_QUALITY.md", DOCS_DIR / "SCOPE.md"]
+COVERED_DOCS = [DOCS_DIR / "DATA_QUALITY.md", DOCS_DIR / "SCOPE.md", DOCS_DIR / "SCORING.md"]
+BACKTEST_TABLES_MD = PROCESSED_DIR / "backtest_tables.md"  # gerado no bloco 3

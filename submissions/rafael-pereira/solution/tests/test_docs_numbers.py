@@ -82,6 +82,14 @@ def test_checker_reports_the_line_of_each_token():
     assert [(t.line, t.text) for t in tokens] == [(2, "4.444"), (7, "99,9%")]
 
 
+def test_checker_reads_percentage_points_as_fraction_times_100():
+    pool = [0.126, 0.0925]
+    ok = "+12,6 pp e 12,6 pontos percentuais; 9,3 pp"
+    assert [t.text for t in docs.unmatched_numbers(ok, pool)] == []
+    bad = "12,7 pp, 0,126 pp e 12,6 pontos percentuais"
+    assert [t.text for t in docs.unmatched_numbers(bad, pool)] == ["12,7 pp", "0,126 pp"]
+
+
 def test_checker_does_not_confuse_plain_small_numbers_with_facts():
     assert bad_tokens("são 30 vendedores em 6 times; 99 não é checado, 100 é") == ["100"]
 

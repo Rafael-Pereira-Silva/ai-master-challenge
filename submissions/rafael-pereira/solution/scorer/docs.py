@@ -23,7 +23,7 @@ import pandas as pd
 
 from . import config
 from .facts import load_facts
-from .fmt import fmt_date, fmt_dec, fmt_int, fmt_month, fmt_pct, fmt_pp, fmt_quarter, round_half_up
+from .fmt import fmt_date, fmt_dec, fmt_int, fmt_month, fmt_pct, fmt_pp, fmt_quarter, fmt_usd, round_half_up
 
 # =============================================================================================
 # Blocos AUTO
@@ -263,11 +263,311 @@ def _dq_vendedores(src: dict) -> str:
 
 
 # =============================================================================================
+# Renderizadores do SCORING.md (backtest_metrics.json)
+# =============================================================================================
+_PENDING_BACKTEST = "_Backtest ainda não rodado: execute `python -m scorer.validate`._"
+_METHOD_ORDER = ("score", "valor", "recencia", "aleatorio", "p_only")
+_BEST_OF = ("score", "valor", "recencia", "aleatorio")  # o diagnóstico `p_only` não disputa o melhor
+_LISTS = ("Foque", "Reative", "Limpe")
+
+
+def _scoring_block(name: str):
+    """Como `block`, mas devolve um aviso quando o JSON do backtest ainda não existe."""
+
+    def register(func):
+        def render(src: dict) -> str:
+            bt = src.get("backtest")
+            return _PENDING_BACKTEST if bt is None else func(bt)
+
+        render.__name__ = func.__name__
+        BLOCKS[name] = render
+        return func
+
+    return register
+
+
+def _labels(bt: dict) -> dict:
+    return bt["config"]["method_labels"]
+
+
+def _usd(x) -> str:
+    return "—" if x is None else fmt_usd(x)
+
+
+def _pct0(x) -> str:
+    return fmt_pct(x, 1)
+
+
+@_scoring_block("scoring-criterio")
+def _sc_criterio(bt: dict) -> str:
+    crit = bt["criterion"]
+    rows = []
+    for r in crit["per_cut"]:
+        others = [r["valor"], r["recencia"], r["aleatorio_media"], r["aleatorio_p95"]]
+        margin = r["score"] - max(others)
+        rows.append([
+            fmt_date(r["cut"]), _pct0(r["score"]), _pct0(r["valor"]), _pct0(r["recencia"]), _pct0(r["aleatorio_media"]),
+            _pct0(r["aleatorio_p95"]), fmt_pp(margin), _yes(r["passa"]),
+        ])
+    table = md_table(
+        ["Corte", "Score", "Valor", "Recência", "Aleatório (média)", "Aleatório (p95)", "Margem sobre o melhor baseline", "Vence os 4?"],
+        rows,
+    )
+    verdict = "**PASSOU**" if crit["passed"] else "**FALHOU**"
+    lines = [table, "", f"Receita capturada no top 20%. Empate é diferença de até {fmt_dec(crit['tie_tol'], 2)} e não vence. Resultado: {verdict}."]
+    for kind, run in crit["runs"].items():
+        name = "curva platô + queda" if kind == "plateau" else "ajuste único (faixas de 15 dias, PAVA)"
+        lines.append(f"- {name}: {'passou' if run['passed'] else 'falhou'}; receita média do score nos cortes: {_pct0(run['media_receita_top20_score'])}.")
+    return "\n".join(lines)
+
+
+@_scoring_block("scoring-backtest")
+def _sc_backtest(bt: dict) -> str:
+    labels = _labels(bt)
+    rows = []
+    for cut in bt["cuts"]:
+        best = {k: max(cut["metodos"][m][k] for m in _BEST_OF) for k in ("auc", "ganhos_top20", "receita_top20")}
+        for method in _METHOD_ORDER:
+            m = cut["metodos"][method]
+            cells = []
+            for key, fmt in (("auc", lambda v: fmt_dec(v, 2)), ("ganhos_top20", _pct0), ("receita_top20", _pct0)):
+                text = fmt(m[key])
+                if method == "aleatorio":
+                    text += f" ({fmt(m['p5'][key])} a {fmt(m['p95'][key])})"
+                if method in _BEST_OF and m[key] == best[key]:
+                    text = f"**{text}**"
+                cells.append(text)
+            rows.append([fmt_date(cut["cut"]), labels[method], *cells])
+    table = md_table(["Corte", "Método", "AUC", "Ganhos capturados no top 20%", "Receita capturada no top 20%"], rows, "llrrr")
+    return table + "\n\nEm negrito, o melhor entre score, valor, recência e aleatório. No aleatório, entre parênteses, o intervalo de p5 a p95 de 200 sorteios."
+
+
+@_scoring_block("scoring-media")
+def _sc_media(bt: dict) -> str:
+    labels = _labels(bt)
+    media = bt["media_cortes"]["metodos"]
+    rows = [
+        [labels[m], fmt_dec(media[m]["auc"], 2), _pct0(media[m]["ganhos_top20"]), _pct0(media[m]["receita_top20"])]
+        for m in _METHOD_ORDER
+    ]
+    table = md_table(["Método", "AUC", "Ganhos capturados no top 20%", "Receita capturada no top 20%"], rows)
+    brier = bt["media_cortes"]["brier"]
+    note = (
+        f"Média simples dos {fmt_int(bt['headline']['n_cortes'])} cortes. Brier da chance: {fmt_dec(brier['modelo'], 3)} contra "
+        f"{fmt_dec(brier['constante'], 3)} da taxa média de treino (log-loss {fmt_dec(brier['log_loss_modelo'], 3)} contra "
+        f"{fmt_dec(brier['log_loss_constante'], 3)}), sobre ganhos em 90 dias."
+    )
+    return table + "\n\n" + note
+
+
+@_scoring_block("scoring-categorias")
+def _sc_categorias(bt: dict) -> str:
+    rows = []
+    for cut in bt["cuts"]:
+        for cat in _LISTS:
+            c = cut["categorias"][cat]
+            rows.append([
+                fmt_date(cut["cut"]), cat, fmt_int(c["n"]), _pct0(c["pct_ganhos"]), _usd(c["receita_ganha"]),
+                _pct0(c["pct_receita"]), _usd(c["valor_tabela"]), _usd(c["valor_esperado"]),
+            ])
+    return md_table(
+        ["Corte", "Lista", "Deals", "Ganhos até 31/12/2017", "Receita ganha", "% da receita", "Valor de tabela", "Valor esperado"],
+        rows, "llrrrrrr",
+    )
+
+
+@_scoring_block("scoring-calibracao")
+def _sc_calibracao(bt: dict) -> str:
+    brows = [
+        [fmt_date(c["cut"]), fmt_int(c["brier"]["n"]), fmt_dec(c["brier"]["modelo"], 3), fmt_dec(c["brier"]["constante"], 3),
+         fmt_dec(c["brier"]["log_loss_modelo"], 3), fmt_dec(c["brier"]["log_loss_constante"], 3)]
+        for c in bt["cuts"]
+    ]
+    t1 = md_table(["Corte", "Deals", "Brier do modelo", "Brier da constante", "Log-loss do modelo", "Log-loss da constante"], brows)
+    crows = []
+    for c in bt["cuts"]:
+        for band in c["calibracao"]:
+            if band["n"]:
+                crows.append([fmt_date(c["cut"]), band["faixa"], fmt_int(band["n"]), _pct0(band["p_modelo"]), _pct0(band["taxa_observada_90d"])])
+    t2 = md_table(["Corte", "Idade", "Deals", "Chance média do modelo", "Ganhos em 90 dias (observado)"], crows, "llrrr")
+    return t1 + "\n\n" + t2
+
+
+@_scoring_block("scoring-bootstrap")
+def _sc_bootstrap(bt: dict) -> str:
+    def cell(d):
+        return f"{fmt_pp(d['diff'])} (IC {fmt_pp(d['ci_low'])} a {fmt_pp(d['ci_high'])})"
+
+    rows = [
+        [fmt_date(c["cut"]), cell(c["bootstrap"]["score_menos_valor"]), cell(c["bootstrap"]["score_menos_recencia"])]
+        for c in bt["cuts"]
+    ]
+    n = fmt_int(bt["config"]["bootstrap_reps"])
+    return md_table(["Corte", "Score menos valor", "Score menos recência"], rows, "lrr") + (
+        f"\n\nDiferença na receita capturada no top 20%, em pontos percentuais; IC de 2,5% a 97,5% por {n} reamostragens dos deals do corte (semente 0)."
+    )
+
+
+@_scoring_block("scoring-foque-idade")
+def _sc_foque_idade(bt: dict) -> str:
+    rows = []
+    for c in bt["cuts"]:
+        for band in c["foque_por_idade"]["faixas"]:
+            rows.append([
+                fmt_date(c["cut"]), band["faixa"], fmt_int(band["n"]), _pct0(band["p_modelo"]),
+                _pct0(band["taxa_ganho_90d"]),
+            ])
+    t1 = md_table(["Corte", "Idade (dentro do Foque do corte)", "Deals", "Chance do modelo", "Ganhos em 90 dias (observado)"], rows, "llrrr")
+    drows = []
+    for c in bt["cuts"]:
+        d = c["foque_por_idade"]["diferenca_ultima_menos_primeira_90d"]
+        drows.append([fmt_date(c["cut"]), fmt_pp(d["diff"]), f"{fmt_pp(d['ci_low'])} a {fmt_pp(d['ci_high'])}"])
+    t2 = md_table(["Corte", "61 dias ou mais menos 0 a 30 dias", "IC de 2,5% a 97,5%"], drows, "lrr")
+    hoje = bt["hoje"]["foque_por_idade"]
+    total = bt["hoje"]["categorias"]["Foque"]["n"]
+    parts = ", ".join(f"{b['faixa']}: {fmt_int(b['n'])}" for b in hoje)
+    return f"{t1}\n\n{t2}\n\nFoque de hoje ({fmt_int(total)} deals) por idade: {parts}."
+
+
+def _delta_cell(r: dict) -> str:
+    return f"{fmt_pp(r['diff'])}"
+
+
+@_scoring_block("scoring-sensibilidade")
+def _sc_sensibilidade(bt: dict) -> str:
+    sens = bt["sensibilidade_2017-02-28"]
+    rows = []
+    for r, main in zip(sens["por_corte"], bt["cuts"]):
+        rows.append([
+            fmt_date(r["cut"]), fmt_int(r["modelo"]["knot_days"]), fmt_int(main["modelo"]["knot_days"]),
+            fmt_int(r["modelo"]["train_rows"]), fmt_dec(r["score"]["auc"], 2), _pct0(r["score"]["ganhos_top20"]),
+            _pct0(r["score"]["receita_top20"]), fmt_pp(r["delta_receita_top20_vs_principal"]),
+        ])
+    t1 = md_table(
+        ["Corte", "Joelho (foto de 28/02)", "Joelho (principal)", "Linhas de treino", "AUC", "Ganhos no top 20%", "Receita no top 20%", "Receita vs. principal"],
+        rows,
+    )
+    crit = sens["criterio"]
+    t1 += f"\n\nCom a primeira foto em 28/02/2017 o critério {'passaria' if crit['passed'] else 'falharia'}; receita média do score: {_pct0(sens['media']['receita_top20'])}."
+    labels = _labels(bt)
+    rrows = []
+    for c in bt["cuts"]:
+        r = c["resolvidos"]
+        m = r["metodos"]
+        rrows.append([
+            fmt_date(c["cut"]), fmt_int(r["n_abertos_em_t"]), fmt_int(r["n_resolvidos"]), fmt_int(r["n_abertos_em_31_12"]),
+            fmt_int(r["n_abertos_em_31_12_que_ainda_podem_fechar"]),
+            f"{_pct0(m['score']['receita_top20'])} / {_pct0(m['valor']['receita_top20'])} / {_pct0(m['recencia']['receita_top20'])} / {_pct0(m['aleatorio']['receita_top20'])}",
+            f"{fmt_dec(m['score']['auc'], 2)} / {fmt_dec(m['valor']['auc'], 2)} / {fmt_dec(m['recencia']['auc'], 2)}",
+        ])
+    t2 = md_table(
+        ["Corte", "Abertos no corte", "Resolvidos até 31/12", "Ainda abertos em 31/12", "Desses, com idade em 31/12 dentro do limite de Limpe",
+         "Receita no top 20%: score / valor / recência / aleatório", "AUC: score / valor / recência"],
+        rrows,
+    )
+    return f"**Primeira foto de treino em 28/02/2017**\n\n{t1}\n\n**Só deals resolvidos (fechados até 31/12/2017)**\n\n{t2}"
+
+
+@_scoring_block("scoring-auditoria")
+def _sc_auditoria(bt: dict) -> str:
+    aud = bt["auditoria"]
+    vrows = [
+        [fmt_date(v["cut"]), "VAZADO", fmt_int(v["knot_days"]), fmt_dec(v["score_vazado"]["auc"], 2), _pct0(v["score_vazado"]["receita_top20"]),
+         fmt_dec(v["score_honesto"]["auc"], 2), _pct0(v["score_honesto"]["receita_top20"]), fmt_pp(v["delta_receita_top20"])]
+        for v in aud["vazado"]
+    ]
+    t1 = md_table(
+        ["Corte", "Rótulo", "Joelho do modelo vazado", "AUC vazado", "Receita vazada", "AUC honesto", "Receita honesta", "Receita: vazado menos honesto"],
+        vrows, "llrrrrrr",
+    )
+    crows = [
+        [fmt_date(a["cut"]), fmt_int(a["n_com_conta"]), fmt_int(a["n_sem_conta"]), fmt_dec(a["auc_has_account"], 2),
+         _pct0(a["taxa_ganho_com_conta"]), _pct0(a["taxa_ganho_sem_conta"]), fmt_int(a["ganhos_sem_conta"])]
+        for a in aud["has_account"]
+    ]
+    t2 = md_table(
+        ["Corte", "Com conta", "Sem conta", "AUC de `has_account` sozinho", "Ganhos depois (com conta)", "Ganhos depois (sem conta)", "Ganhos entre os sem conta"],
+        crows,
+    )
+    return (
+        "**Modelo ajustado com o futuro (VAZADO; nunca é resultado)**\n\n" + t1 +
+        "\n\n**`has_account` sozinho (proibido como variável)**\n\n" + t2
+    )
+
+
+@_scoring_block("scoring-atributos")
+def _sc_atributos(bt: dict) -> str:
+    cuts = [fmt_date(c["cut"]) for c in bt["cuts"]]
+    rows_ll, rows_rev = [], []
+    for a in bt["atributos"]:
+        first = a["por_corte"][0]
+        head = [a["atributo"], a["subconjunto"], fmt_int(first["n_niveis"])]
+        rows_ll.append(head + [fmt_dec(r["delta_log_loss"], 4) for r in a["por_corte"]] + [_yes(a["melhora_log_loss_em_todos"])])
+        rows_rev.append(head + [fmt_pp(r["delta_receita_top20"]) for r in a["por_corte"]] + [_yes(a["nao_piora_receita_em_nenhum"]), _yes(a["entra"])])
+    t1 = md_table(["Atributo", "Subconjunto", "Níveis"] + [f"Δ log-loss {c}" for c in cuts] + ["Melhora em todos?"], rows_ll, "llr" + "r" * (len(cuts) + 1))
+    t2 = md_table(["Atributo", "Subconjunto", "Níveis"] + [f"Δ receita top 20% {c}" for c in cuts] + ["Não piora em nenhum?", "Entra?"], rows_rev, "llr" + "r" * (len(cuts) + 2))
+    rows_tr = [
+        [a["atributo"], a["subconjunto"]] + [fmt_dec(r["delta_log_loss_treino"], 4) for r in a["por_corte"]]
+        for a in bt["atributos"]
+    ]
+    t3 = md_table(["Atributo", "Subconjunto"] + [f"Δ log-loss no treino {c}" for c in cuts], rows_tr, "ll" + "r" * len(cuts))
+    return (
+        "Δ log-loss negativo é melhora (log-loss de 90 dias, contra a curva só de idade no mesmo subconjunto).\n\n" + t1 + "\n\n" + t2
+        + "\n\nDiagnóstico, que não decide: o mesmo Δ log-loss medido dentro da amostra de treino.\n\n" + t3
+    )
+
+
+@_scoring_block("scoring-modelos")
+def _sc_modelos(bt: dict) -> str:
+    def row(label, m):
+        return [
+            label, fmt_int(m["knot_days"]), _pct0(m["p_fresh"]), fmt_dec(m["slope_per_30d"], 2), fmt_dec(m["halving_days"], 1),
+            fmt_int(m["limpe_after_days"]), fmt_int(m["n_snapshots"]), fmt_int(m["train_rows"]), _pct0(m["base_rate"]),
+        ]
+
+    rows = [row(fmt_date(c["cut"]), c["modelo"]) for c in bt["cuts"]]
+    rows.append(row(f"{fmt_date(bt['hoje']['as_of'])} (hoje)", bt["hoje"]["modelo"]))
+    return md_table(
+        ["Modelo ajustado até", "Joelho (dias)", "Chance de deal novo", "Inclinação por 30 dias", "Meia-vida depois do joelho (dias)",
+         "Limite de Limpe (dias)", "Fotos", "Linhas de treino", "Taxa base de treino"],
+        rows,
+    )
+
+
+@_scoring_block("scoring-hoje")
+def _sc_hoje(bt: dict) -> str:
+    hoje = bt["hoje"]
+    m = hoje["modelo"]
+    desc = {
+        "Foque": f"idade até {fmt_int(m['knot_days'])} dias",
+        "Reative": f"{fmt_int(m['knot_days'] + 1)} a {fmt_int(m['limpe_after_days'])} dias",
+        "Limpe": f"mais de {fmt_int(m['limpe_after_days'])} dias",
+        "Qualifique": "Prospecting (sem data)",
+    }
+    rows = [
+        [cat, desc[cat], fmt_int(hoje["categorias"][cat]["n"]), _usd(hoje["categorias"][cat]["valor_tabela"]), _usd(hoje["categorias"][cat]["valor_esperado"])]
+        for cat in config.CATEGORIES
+    ]
+    t1 = md_table(["Lista", "Regra", "Deals", "Valor de tabela", "Valor esperado"], rows, "llrrr")
+    f = hoje["faixas_fixas_do_briefing"]
+    t2 = md_table(
+        ["Lista", "Faixas fixas do briefing (90 e 138 dias)", "Joelho e limite aprendidos"],
+        [
+            ["Foque", fmt_int(f["ate_90"]), fmt_int(hoje["categorias"]["Foque"]["n"])],
+            ["Reative", fmt_int(f["de_91_a_138"]), fmt_int(hoje["categorias"]["Reative"]["n"])],
+            ["Limpe", fmt_int(f["acima_de_138"]), fmt_int(hoje["categorias"]["Limpe"]["n"])],
+        ],
+    )
+    return t1 + "\n\n" + t2
+
+
+# =============================================================================================
 # Conferência dos números da prosa
 # =============================================================================================
 _NUM = r"\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?"  # número PT-BR: 1.291 | 3,2 | 1.234,5 | 138
 _TOKEN_RE = re.compile(
     rf"(?P<usd>US\$\s?(?P<usd_num>{_NUM})(?:\s?(?P<unit>mil|mi)\b)?)"
+    rf"|(?P<pp>(?<![\w.,])(?P<pp_num>{_NUM})\s?(?:pp\b|pontos percentuais\b))"
     rf"|(?P<pct>(?<![\w.,])(?P<pct_num>{_NUM})\s?%)"
     rf"|(?P<dec>(?<![\w.,])(?:\d{{1,3}}(?:\.\d{{3}})+,\d+|\d+,\d+)(?!\w))"
     rf"|(?P<int>(?<![\w.,])(?:\d{{1,3}}(?:\.\d{{3}})+|\d{{3,}})(?!\w))"
@@ -332,8 +632,8 @@ def extract_number_tokens(text: str) -> list[NumberToken]:
     """Números a conferir: US$, porcentagens, decimais com vírgula e inteiros >= 100 ou com ponto de milhar."""
     tokens = []
     for match in _TOKEN_RE.finditer(text):
-        kind = match.lastgroup  # grupo mais externo que casou: usd, pct, dec ou int
-        number = match.group(f"{kind}_num") if kind in ("usd", "pct") else match.group(kind)
+        kind = match.lastgroup  # grupo mais externo que casou: usd, pp, pct, dec ou int
+        number = match.group(f"{kind}_num") if kind in ("usd", "pp", "pct") else match.group(kind)
         value, decimals = _parse_pt(number)
         scale = _UNIT_SCALE[match.group("unit")] if kind == "usd" else 1.0
         line = text.count("\n", 0, match.start()) + 1
@@ -369,7 +669,8 @@ def token_matches(token: NumberToken, pool: list[float]) -> bool:
     """O valor exibido, com a precisão exibida, bate com algum valor do pool?
 
     US$: o valor é dividido pela unidade exibida (mi, mil). Porcentagem: vale a fração (x100) ou o valor
-    já em pontos percentuais. Decimal e inteiro: comparação direta. O sinal é ignorado.
+    já em pontos percentuais. "pp" e "pontos percentuais": a fração x100. Decimal e inteiro: comparação direta.
+    O sinal é ignorado.
     """
     d = token.decimals
     for v in pool:
@@ -377,6 +678,8 @@ def token_matches(token: NumberToken, pool: list[float]) -> bool:
             hit = _close(round_half_up(v / token.scale, d), token.value)
         elif token.kind == "pct":
             hit = _close(round_half_up(v * 100, d), token.value) or _close(round_half_up(v, d), token.value)
+        elif token.kind == "pp":  # pontos percentuais: a diferença está guardada como fração
+            hit = _close(round_half_up(v * 100, d), token.value)
         else:  # 'dec' e 'int'
             hit = _close(round_half_up(v, d), token.value)
         if hit:
