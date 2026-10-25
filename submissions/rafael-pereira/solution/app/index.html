@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Lead Scorer — onde pôr o tempo esta semana</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<noscript>
+  <p class="boot-msg">Esta página precisa de JavaScript ligado para mostrar as listas.</p>
+</noscript>
+
+<!-- Aparece só se o data.js não carregar (app.js tira o hidden) -->
+<div id="no-data" class="boot-msg" data-testid="no-data" role="alert" hidden>
+  <h1>Lead Scorer</h1>
+  <p>Os dados ainda não foram gerados. Rode <code>python -m scorer.build</code> e abra esta página de novo.</p>
+</div>
+
+<div id="app" hidden>
+
+  <header class="bar">
+    <div class="wrap bar-in">
+      <h1 class="brand">Lead Scorer</h1>
+      <div class="bar-mode">
+        <label for="mode-select" class="sr-only">Data da foto da carteira</label>
+        <select id="mode-select" data-testid="mode-select"></select>
+      </div>
+      <button type="button" id="how-btn" class="btn btn-link" data-testid="how-btn">Como funciona o score</button>
+    </div>
+  </header>
+
+  <div id="test-banner" class="banner" data-testid="test-banner" hidden></div>
+
+  <main class="wrap">
+
+    <section class="filters" aria-label="Filtros">
+      <div class="field field-agent">
+        <label for="filter-agent">Quem é você?</label>
+        <select id="filter-agent" data-testid="filter-agent"></select>
+      </div>
+      <div class="field">
+        <label for="filter-manager">Manager</label>
+        <select id="filter-manager" data-testid="filter-manager"></select>
+      </div>
+      <div class="field">
+        <label for="filter-region">Região</label>
+        <select id="filter-region" data-testid="filter-region"></select>
+      </div>
+      <button type="button" id="filter-clear" class="btn" data-testid="filter-clear">Limpar</button>
+    </section>
+
+    <section class="action" aria-label="O que fazer">
+      <p id="scope-label" class="scope" data-testid="scope-label"></p>
+      <p id="action-summary" class="action-text" data-testid="action-summary" role="status" aria-live="polite"></p>
+    </section>
+
+    <div id="tabs" class="tabs" role="tablist" aria-label="Listas de ação"></div>
+
+    <section id="results" class="results" data-testid="backtest-results" aria-label="O que aconteceu depois" hidden></section>
+
+    <div id="team"></div>
+
+    <section id="panel" class="panel" role="tabpanel" tabindex="-1">
+      <p id="instruction" class="instruction" data-testid="instruction"></p>
+      <div id="empty" class="empty" data-testid="empty-state" hidden></div>
+      <div id="cards" class="cards"></div>
+      <div id="more" class="more" hidden>
+        <p id="shown-count" class="muted" data-testid="shown-count"></p>
+        <button type="button" id="more-btn" class="btn btn-wide" data-testid="show-more"></button>
+      </div>
+    </section>
+
+    <details id="how" class="box" data-testid="how-it-works">
+      <summary>Como funciona o score</summary>
+      <ol id="how-list" class="how-list"></ol>
+    </details>
+
+    <details id="backtest" class="box" data-testid="backtest-panel">
+      <summary>Teste no passado</summary>
+      <div id="backtest-body"></div>
+    </details>
+
+  </main>
+
+  <footer class="wrap foot" id="foot"></footer>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

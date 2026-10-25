@@ -6,7 +6,7 @@ Sem jargão: "chance" (não probabilidade), nada de logit ou coeficiente.
 
 from __future__ import annotations
 
-from . import fmt
+from . import config, fmt
 from .score import ScoreModel
 
 NO_ACCOUNT_SENTENCE = "Conta não informada no CRM — preencha; isso não muda o score."
@@ -117,7 +117,7 @@ def _result_line(headline_metrics: dict | None) -> str:
     if not headline_metrics:
         return f"O teste no passado ainda não foi rodado. {suffix}"
     return (
-        f"Testado no passado em {fmt.fmt_int(headline_metrics['n_cortes'])} datas: o top 20% do score capturou "
+        f"Testado no passado em {fmt.fmt_int(headline_metrics['n_cortes'])} datas: o top {fmt.fmt_pct(config.TOP_FRAC, 0)} do score capturou "
         f"{fmt.fmt_pct(headline_metrics['receita_score'], 0)} da receita ganha depois, contra "
         f"{fmt.fmt_pct(headline_metrics['receita_valor'], 0)} ordenando por valor e "
         f"{fmt.fmt_pct(headline_metrics['receita_recencia'], 0)} pelos mais recentes. {suffix}"
