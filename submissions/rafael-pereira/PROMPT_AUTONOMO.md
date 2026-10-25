@@ -1,6 +1,5 @@
 /anthropic-skills:opus-plan
 
-MODO AUTÔNOMO. Conclua sozinho o Challenge 003 (Lead Scorer) do AI Master Challenge do G4 e me entregue a solução final pronta para o Pull Request. Não me faça perguntas no meio do caminho. Quando houver uma decisão, escolha a opção mais defensável com base nos dados, registre em docs/DECISIONS.md e siga em frente.
 
 ## 1. Fontes (leia tudo antes de planejar)
 - Esta pasta: os CSVs originais do Kaggle (accounts, products, sales_teams, sales_pipeline, metadata).

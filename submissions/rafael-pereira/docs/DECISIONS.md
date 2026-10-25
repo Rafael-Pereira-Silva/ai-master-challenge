@@ -1,5 +1,11 @@
 # Log de decisões
 
+**Como ler este log.** Trilha de auditoria do projeto: cada linha traz a decisão, a alternativa descartada e o motivo.
+- **"Fase 0 (kit do Rafael)":** decisões que eu (Rafael) tomei explorando os dados. Viraram regra obrigatória em [`CLAUDE.md`](../CLAUDE.md).
+- **"(decisão autônoma do Claude)":** decisões técnicas que os agentes tomaram sozinhos durante a execução, **dentro das regras que eu escrevi antes**: as 7 decisões do `CLAUDE.md`, os critérios por bloco do [`PROMPTS.md`](../PROMPTS.md) e as regras de honestidade do [`PROMPT_AUTONOMO.md`](../PROMPT_AUTONOMO.md) (ajuste único, sem maquiar resultado, sem inventar intervenção humana, sem publicar em meu nome).
+
+A marca existe para que fique auditável quem decidiu o quê. As linhas não foram reatribuídas depois.
+
 | data | decisão | alternativa descartada | motivo |
 |---|---|---|---|
 | 2026-10-25 (fase 0) | Fase 0 (kit do Rafael) — Arquitetura: motor de scoring em Python (pandas, funções puras, pytest) gera `solution/app/data.js`; interface estática em HTML, CSS e JS puro, sem build, abre por duplo-clique e vai ao GitHub Pages | Streamlit (é o default do baseline) e interface com fetch de JSON | Streamlit é o default do baseline que a banca compara (00_fase0, seção 6); `data.js` abre em `file://` sem servidor, por isso não há fetch de JSON (CLAUDE.md, decisão 1) |
@@ -80,3 +86,7 @@
 | 2026-10-25 | Bloco 6 — Pós-revisão 2: aviso do Foque com 61+ dias aparece na linha-instrução da aba Foque, a partir de `backtest.notes` (nota "No Foque, ..."), sem número escrito à mão (decisão autônoma do Claude) | Frase extra em `explain.py` por deal | A opção do `explain.py` exigiria passar o JSON de métricas para cada deal e mudar a assinatura de `explain_deal`; a nota já existe no `data.js` e deixa o aviso visível na aba de hoje |
 | 2026-10-25 | Bloco 6 — Pós-revisão 2: card com chance entre 0 e 0,5% mostra "<1%" (derivado de `pct0(0.01)`, porque o check estático proíbe porcentagem literal), coerente com o "menos de 1%" do `explain.py` (decisão autônoma do Claude) | Manter "chance 0%" | O card e o texto se contradiziam |
 | 2026-10-25 | Bloco 6 — Pós-revisão 2: README, linha do revisor em "Ferramentas usadas", aponta para `process-log/06_revisao-independente.md` com "nota média entre três e quatro de cinco" por extenso (decisão autônoma do Claude) | Escrever "3,6" | `test_docs_numbers` só aceita números que saem dos fatos; 3,6 vem de notas do revisor, não do CSV |
+| 2026-10-25 | Bloco 7 — Pedido do Rafael: alinhar o Process Log ao perfil de AI Master e à governança de IA, e reforçar as evidências. A seção "O que eu adicionei" sai do rascunho e passa para a primeira pessoa | Manter a narrativa de "execução autônoma" e o rascunho | As duas revisões independentes apontaram o process log como o ponto mais fraco; a narrativa omitia quem desenhou as regras e os controles |
+| 2026-10-25 | Bloco 7 — Export da sessão de orquestração convertido por script (mensagens com horário, sem e-mail e sem saídas de ferramentas) em `process-log/chat-exports/` (decisão autônoma do Claude, a pedido do Rafael) | Commitar o zip bruto (13 MB, com transcrições de subagentes) ou não ter export | Evidência legível das intervenções humanas, sem dado pessoal; o zip completo fica com o Rafael |
+| 2026-10-25 | Bloco 7 — Mapa de evidências em `process-log/README.md`, por pergunta da banca (decisão autônoma do Claude) | Deixar as evidências espalhadas | O guia de submissão pede evidência de processo; o mapa liga cada pergunta ao arquivo |
+| 2026-10-25 | Bloco 7 — Rótulo dos erros da execução trocado de "autocorreção na execução autônoma" para "execução delegada (pego pelos controles)" (decisão autônoma do Claude) | Manter o rótulo antigo | Descreve o mecanismo real: os erros foram pegos pelos controles exigidos no kit (verificador de números, testes de vazamento, critério pré-registrado), não por acaso |

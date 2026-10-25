@@ -81,9 +81,11 @@ def test_about_me_has_linkedin_and_challenge(text):
     assert "003 — Lead Scorer" in about
 
 
-def test_draft_marker_opens_the_added_value_section(text):
-    added = section(text, "### O que eu adicionei que a IA sozinha não faria").lstrip()
-    assert added.startswith("[RASCUNHO — Rafael revisar]")
+def test_added_value_section_is_final_and_ties_to_the_ai_master_profile(text):
+    added = section(text, "### O que eu adicionei que a IA sozinha não faria")
+    assert "[RASCUNHO" not in added  # revisado pelo Rafael no bloco 7
+    for needle in ["AI Master", "governança", "não automatizar"]:
+        assert needle in added, needle
 
 
 def test_ai_errors_are_labelled_by_origin(text):
@@ -92,7 +94,13 @@ def test_ai_errors_are_labelled_by_origin(text):
     assert len(bullets) >= 8
     for bullet in bullets:
         head = bullet.split("\n")[0]
-        assert "(fase 0, com Rafael)" in head or "(autocorreção na execução autônoma)" in head, head[:80]
+        assert "(fase 0, com Rafael)" in head or "(execução delegada)" in head, head[:80]
+
+
+def test_evidence_map_and_chat_export_exist():
+    log = config.SUBMISSION_DIR / "process-log"
+    for name in ["README.md", "07_revisao-do-rafael.md", "chat-exports/sessao-orquestracao-claude-code.md"]:
+        assert (log / name).exists(), name
 
 
 def test_tools_table_and_evidence_checklist_exist(text):
@@ -119,8 +127,7 @@ def test_workflow_has_one_item_per_block_from_0_to_6(text):
 
 def test_setup_has_pages_placeholder_and_commands(text):
     setup = section(text, "### Como rodar (setup)")
-    assert "https://<seu-usuario>.github.io/ai-master-challenge/submissions/rafael-pereira/solution/app/" in setup
-    assert "[ativar — Rafael]" in setup
+    assert "https://rafael-pereira-silva.github.io/ai-master-challenge/submissions/rafael-pereira/solution/app/" in setup
     for cmd in ["pip install -r requirements.txt", "python -m pytest", "python -m scorer.build --reference-date 2017-12-31",
                 "pip install -r requirements-dev.txt", "python tools/check_app.py --prefix final"]:
         assert cmd in setup, cmd

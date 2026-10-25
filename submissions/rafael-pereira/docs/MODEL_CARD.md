@@ -75,7 +75,20 @@ X = 10 pp (`config.RECALIBRATION_SHIFT_PP`). Teste de bom senso no backtest: ent
 
 3. **Ao migrar para um CRM real com histórico de estágios.** O modelo atual só vê a data de engajamento e o desfecho; com o histórico de estágios dá para medir tempo parado por etapa, que é uma idade melhor do que "dias desde o engajamento". O teto de 138 dias e a regra Q/Q+1 devem desaparecer ou mudar, e o critério pré-registrado precisa ser rodado de novo, com cortes novos.
 
-## 8. Dono e revisão
+## 8. Governança do desenvolvimento
+
+O modelo foi construído com agentes de IA, sob controles definidos antes da execução:
+- **Separação de funções:** um agente planeja, outros executam, e um revisor de contexto limpo avalia sem ter visto o processo.
+- **Critério de sucesso pré-registrado:** um único ajuste permitido.
+- **Proteção contra vazamento:** teste de mutação do futuro.
+- **Justiça:** teste de permutação dos vendedores.
+- **Números conferidos por teste:** todo número publicado é checado contra os arquivos gerados.
+- **Trilha de decisões:** [DECISIONS.md](DECISIONS.md).
+- **Publicação reservada ao responsável humano.**
+
+Mudanças no modelo seguem a mesma regra: novo backtest com critério fixado antes, nunca ajuste depois de ver o resultado.
+
+## 9. Dono e revisão
 
 - **Dono:** RevOps (a Head de RevOps, como patrocinadora, designa a pessoa responsável pelo modelo).
 - **Revisão:** trimestral, junto com a recalibração: conferir o critério pré-registrado nos cortes mais recentes, a lista de atributos testados e se os alertas da seção 7 dispararam.

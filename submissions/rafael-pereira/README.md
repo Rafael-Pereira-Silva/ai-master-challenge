@@ -21,7 +21,7 @@ Uma página estática, sem servidor, que o vendedor abre na segunda de manhã: e
 ### Como rodar (setup)
 
 1. **Abrir a ferramenta sem instalar nada.** Duplo-clique em [`solution/app/index.html`](solution/app/index.html) (funciona em `file://`, sem servidor e sem internet).
-2. **Link publicado (GitHub Pages):** `https://<seu-usuario>.github.io/ai-master-challenge/submissions/rafael-pereira/solution/app/` **[ativar — Rafael]**. O nome de usuário do GitHub não é conhecido neste texto, então o endereço é um modelo; não inventei um link.
+2. **Link publicado (GitHub Pages):** https://rafael-pereira-silva.github.io/ai-master-challenge/submissions/rafael-pereira/solution/app/ (fica no ar depois que o Pages for ativado na publicação).
 3. **Regenerar tudo a partir dos CSVs** (Python 3.11; testado com pandas 3.1, numpy 2.4, scipy 1.17 e pytest 9.1):
 
 ```
@@ -119,7 +119,7 @@ Para a Head de RevOps, em ordem de prioridade:
 - **O Foque de hoje está otimista** para os deals com 61 dias ou mais. Medido e documentado, não corrigido no modelo.
 - **Corte de 30/06 com uma foto de treino só**, e a regra "fotos a partir de 31/03" foi escolhida depois de o planejador ver o protótipo. Com 28/02 o critério também passaria; a diferença está na [seção 7 do SCORING](docs/SCORING.md).
 - **Censura:** deals abertos em 31/12/2017 contam como "não ganho". Prospecting não tem score nem backtest. Horizonte de 90 dias e passo da grade do joelho não tiveram sensibilidade medida.
-- **Não há chat-exports.** A sessão foi autônoma e única; o registro do processo são os logs por bloco, o DECISIONS e o histórico de commits (ver [LEIA-ME](process-log/chat-exports/LEIA-ME.md)).
+- **chat-exports parciais.** Só a sessão de orquestração no Claude Code tem export ([`process-log/chat-exports/`](process-log/chat-exports/sessao-orquestracao-claude-code.md)). A fase 0, feita no app do Claude, está registrada em narrativa, sem export.
 - **Git:** a máquina não tinha git nem gh. O repositório foi clonado e commitado com dulwich (biblioteca Python), por um helper fora da pasta; o autor dos commits é o Rafael, com o trailer `Co-Authored-By: Claude`.
 - **Interrupção por limite de API.** Os executores pararam entre 16:28 e 19:01 de 25/10/2026, no meio do bloco 3. O critério pré-registrado e o rascunho do SCORING já estavam gravados e nenhum resultado de backtest tinha sido visto antes da retomada ([log do bloco 3](process-log/03_bloco-3.md)).
 - **GitHub Pages não ativado:** depende do usuário do GitHub do Rafael (marcado no setup).
@@ -130,79 +130,104 @@ Para a Head de RevOps, em ordem de prioridade:
 
 > **Este bloco é obrigatório.** Sem ele, a submissão é desclassificada.
 
+**Como eu trabalhei, em uma frase:** primeiro explorei os dados em conversa com o Claude até entender o problema. Depois transformei o que aprendi em regras escritas (o "kit": [`CLAUDE.md`](CLAUDE.md), [`PROMPTS.md`](PROMPTS.md), [`GUIA.md`](GUIA.md) e [`PROMPT_AUTONOMO.md`](PROMPT_AUTONOMO.md)). Por fim, deleguei a execução a uma equipe de agentes Claude, sob controles que eu defini. Não colei o enunciado numa IA. Montei e governei um processo de desenvolvimento com IA, e cada decisão dele é auditável. O mapa completo das evidências está em [`process-log/README.md`](process-log/README.md).
+
 ### Ferramentas usadas
 
 | Ferramenta | Para que usou |
 |------------|--------------|
-| Claude (app), Sonnet 5.5 e depois Opus 5.5 | Fase 0: ler o repositório, comparar os 4 challenges, explorar os dados e validar a hipótese de frescor (modelos citados em `00_fase0_exploracao.md`) |
-| Claude Code com Opus 5.5 (orquestrador) | Preparar o ambiente, dividir o trabalho em blocos, disparar os executores (até 3 em paralelo), conferir cada entrega e commitar |
-| Subagente Claude Opus 5.5 (planejador, somente leitura) | Escrever o plano de execução com a especificação de cada bloco e rodar protótipos descartáveis (`process-log/plano_execucao_opus.md`) |
-| Subagentes Claude Sonnet e Haiku (executores) | Executar os blocos: Haiku no bloco 0; Sonnet nos blocos 1 a 5 (cada log declara o executor) |
-| Subagente de contexto limpo (revisor, bloco 6) | Revisão independente: avalia a submissão contra os critérios do challenge sem ter visto o processo (duas revisões, com nota média entre três e quatro de cinco nas duas, relatório em `process-log/06_revisao-independente.md`) |
+| Claude (app), Sonnet 5.5 e depois Opus 5.5 | Fase 0, em conversa comigo: ler o repositório, comparar os 4 challenges, explorar os dados, derrubar a hipótese "score por atributos" e validar o frescor. Depois, redigir comigo o kit de regras e prompts por bloco ([`00_fase0_exploracao.md`](process-log/00_fase0_exploracao.md)) |
+| Claude Code com Opus 5.5 (orquestrador) | Executar o meu prompt de operação ([`PROMPT_AUTONOMO.md`](PROMPT_AUTONOMO.md)): preparar o ambiente, disparar e conferir os executores, consolidar os logs e commitar um bloco por vez |
+| Subagente Claude Opus 5.5 (planejador, somente leitura) | Transformar o kit num plano de execução com especificação por etapa e protótipos descartáveis ([`plano_execucao_opus.md`](process-log/plano_execucao_opus.md)) |
+| Subagentes Claude Sonnet e Haiku (executores) | Fazer o volume: código, testes, interface e documentos. Haiku no trabalho mecânico, Sonnet no que exige julgamento local. Cada log declara o executor |
+| Subagente de contexto limpo (revisor, bloco 6) | Fazer o papel da banca: duas revisões independentes, sem acesso ao processo, com notas por critério ([`06_revisao-independente.md`](process-log/06_revisao-independente.md)) |
+| Playwright + Edge, pytest, dulwich | Ferramentas que não são de IA e que eu usei para não acreditar na palavra da IA: o Playwright abre a página de verdade, o pytest prova as regras e o dulwich faz um commit por bloco |
 
 ### Workflow
 
-**Quem decidiu o quê.**
+**Quem fez o quê.** A IA escreveu quase todo o código e o texto. O desenho, as regras e os pontos de decisão foram meus.
 
-| Decisões do Rafael (fase 0) | Execução autônoma do Claude (blocos 0 a 6) |
-|---|---|
-| Escolher o 003; usar os CSVs que já tinha baixado; exigir backtest temporal; tirar o vendedor do score; tratar o teto de 138 dias como provável artefato; pedir o model card; não usar Streamlit (lista completa em "O que eu adicionei", ainda em rascunho para ele confirmar). | Tudo o que está nos passos 0 a 6 abaixo: escopo, limpeza, score, backtest, interface, documentos e revisão independente, com as decisões autônomas registradas em `docs/DECISIONS.md`. O registro não mostra intervenção humana nesses blocos. |
+| O que eu decidi ou defini | O que deleguei à IA | O controle que eu exigi para confiar no resultado |
+|---|---|---|
+| A escolha do 003 e a leitura da dor como "alocação de tempo", não "qual deal tem mais chance" | Escopo detalhado e respostas às 4 perguntas abertas | Cada resposta com alternativa descartada e número ([`SCOPE.md`](docs/SCOPE.md)) |
+| A tese "frescor > atributos", depois que os dados derrubaram o meu plano inicial | Curva de chance por idade, score e explicações | Backtest temporal em 4 cortes contra 3 baselines, com critério e ajuste único fixados antes |
+| Tirar o vendedor do score (diferença compatível com ruído) | Implementação do score | Teste de permutação: trocar os vendedores de lugar não muda nenhum score |
+| "Nenhum número in-sample é resultado" e "nenhum número digitado à mão" | Limpeza, métricas e documentos | Teste que confere cada número da prosa contra os arquivos gerados; teste de mutação do futuro contra vazamento |
+| Não usar Streamlit; página estática que abre com duplo-clique | Interface e build | Playwright em `file://` com 24 checagens, inclusive contagens contra o SCORING |
+| Não publicar nada em meu nome sem mim | Commits locais e texto do PR | O push, o GitHub Pages e o PR ficaram reservados para mim |
+| Revisão independente e "não maquie resultado" | Correções apontadas pelo revisor | Modelo, parâmetros e métrica congelados no bloco 6: crítica de modelagem vira limitação documentada, não ajuste pós-hoc |
 
-0. **Fase 0 e bloco 0 (setup).** No app do Claude: leitura do repositório, escolha do 003 e exploração dos dados, com a hipótese de frescor validada em duas fotos do pipeline. Depois, o orquestrador montou o ambiente (venv, clone via dulwich, Playwright usando o Edge do sistema) e um executor Haiku criou a estrutura e reproduziu a fase 0 contra o briefing.
-1. **Bloco 1, escopo.** Um executor Sonnet escreveu o escopo e respondeu sozinho às 4 perguntas em aberto do briefing, cada uma com alternativa descartada e evidência.
-2. **Bloco 2, dados.** Limpeza, três investigações com critério escrito antes do resultado (o win rate de 82% no 1º trimestre, os vendedores sem deals e `close_value` contra o preço de tabela) e a infraestrutura "todo número vem de script": os documentos têm blocos regenerados e um teste que confere cada número da prosa.
-3. **Bloco 3, score e validação.** Primeiro a checagem de vazamento, escrita antes do código; depois features, score e explicação; por fim o backtest com o critério registrado antes de qualquer número de desempenho. Um segundo executor escreveu em paralelo as primitivas de métrica.
-4. **Bloco 4, ferramenta.** Um executor construiu a interface e o script de verificação contra dados falsos, em paralelo ao motor, a partir de um contrato de dados escrito antes; depois o build real gerou os dados e a página foi verificada com Playwright no Edge, com screenshots.
-5. **Bloco 5, documentação.** Este README e o model card, com todos os números vindos de blocos regenerados e conferidos por teste.
-6. **Bloco 6, revisão independente.** Um revisor de contexto limpo avaliou a submissão; as críticas de interface e documentação foram corrigidas sem mudar o modelo, e as de modelagem viraram texto com número ([relatório e triagem](process-log/06_revisao-independente.md)). Uma segunda revisão, de outro revisor sem acesso à primeira, e o texto do PR vêm depois.
+Passo a passo:
+
+0. **Fase 0 (eu + Claude app) e bloco 0 (setup).** Explorei os dados em conversa, achei o join quebrado ("GTXPro") e a métrica inflada, e pivotei do score por atributos para o frescor. Com isso redigi o kit: 7 decisões fechadas, um prompt por bloco com checkpoints, o guia de armadilhas e o prompt de operação. No Claude Code, o orquestrador montou o ambiente, e um executor Haiku reproduziu os números da fase 0 contra o briefing antes de qualquer código novo.
+1. **Bloco 1, escopo.** Um executor Sonnet respondeu às 4 perguntas que eu tinha deixado em aberto. Cada resposta traz alternativa descartada e evidência. O executor também achou um erro no meu briefing (o produto com mais deals) e contestou com dados uma justificativa do plano.
+2. **Bloco 2, dados.** Limpeza com três investigações, cada uma com critério escrito antes do resultado. Montamos a infraestrutura "todo número vem de script": blocos de documento regenerados e um teste que confere cada número da prosa.
+3. **Bloco 3, score e validação.** A checagem de vazamento foi escrita antes do código, como exigi. O critério de sucesso foi registrado antes do primeiro número de desempenho. O critério passou na primeira rodada, e o ajuste único reservado não foi usado.
+4. **Bloco 4, ferramenta.** Para acelerar sem perder qualidade, a interface foi construída em paralelo ao motor, a partir de um contrato de dados escrito antes. Depois a página foi verificada com Playwright, e uma passada "vendedor na segunda de manhã" corrigiu 3 atritos com screenshots de antes e depois.
+5. **Bloco 5, documentação.** README e model card, com todos os números vindos de blocos regenerados e conferidos por teste.
+6. **Bloco 6, revisão independente.** Dois revisores de contexto limpo avaliaram a submissão como a banca faria. As críticas de interface e documentação foram corrigidas. As de modelagem viraram texto com número, porque eu tinha congelado o modelo para evitar ajuste pós-hoc ([relatórios e triagem](process-log/06_revisao-independente.md)).
+
+**Onde eu intervim durante a execução** (registrado no [export da sessão](process-log/chat-exports/sessao-orquestracao-claude-code.md), com horários):
+- **Paralelizar sem perder qualidade.** Pedi para acelerar com trabalho paralelo, sem perder qualidade. O orquestrador redesenhou o fluxo para até 3 executores ao mesmo tempo, com posse exclusiva de arquivos e um commit por bloco.
+- **Retomar sem refazer.** A cota de uso acabou no meio do bloco 3. Mandei retomar os executores de onde pararam, não recomeçar.
+- **Gestão de custo.** Pedi para refinar as instruções e usar cada modelo no esforço exato. A partir daí, cada etapa teve modelo e nível de esforço escolhidos por complexidade, com executores retomados em vez de recriados.
+- **Revisão final.** Revisei a entrega, alinhei a narrativa ao perfil de AI Master e reforcei as evidências ([`07_revisao-do-rafael.md`](process-log/07_revisao-do-rafael.md)).
 
 ### Onde a IA errou e como corrigi
 
-Só episódios registrados em `process-log/` e em `docs/DECISIONS.md`.
+Só episódios registrados em `process-log/` e em `docs/DECISIONS.md`. Na execução delegada, quem pegou os erros foram os controles que eu tinha exigido: verificação de números, testes de vazamento, critério pré-registrado e conferência visual.
 
 **Na fase 0, com o Rafael:**
 
-- **Métrica otimista (fase 0, com Rafael).** O primeiro cálculo de poder preditivo por categoria usou target encoding dentro da própria amostra e deu um valor inflado. Foi marcado como inflado, e a decisão foi exigir backtest temporal para qualquer número de desempenho.
-- **Win rate de 82% no 1º trimestre tratado como possível insight (fase 0, com Rafael).** Foi rebaixado a suspeita de artefato de recorte e investigado no bloco 2, que confirmou: os fechamentos do trimestre são só de março.
-- **Plano inicial com score por atributos (fase 0, com Rafael).** O plano assumia win rate por produto ou setor. Os dados mostraram todos entre 60% e 65%, e o plano pivotou para o frescor.
+- **Métrica otimista (fase 0, com Rafael).** O primeiro cálculo de poder preditivo por categoria usou target encoding dentro da própria amostra e saiu inflado. Desconfiei do número, marquei como inflado e decidi exigir backtest temporal para qualquer número de desempenho.
+- **Win rate de 82% no 1º trimestre tratado como possível insight (fase 0, com Rafael).** Rebaixei a achado suspeito de artefato de recorte. O bloco 2 investigou e confirmou: os fechamentos do trimestre são só de março.
+- **Plano inicial com score por atributos (fase 0, com Rafael).** O plano assumia win rate por produto ou setor. Os dados mostraram todos entre 60% e 65%, e eu pivotei para o frescor.
 
-**Na execução autônoma:**
+**Na execução delegada (pego pelos controles):**
 
-- **Erro do briefing sobre o MG Special (autocorreção na execução autônoma).** O briefing dizia que o produto tinha o maior volume de deals, e o primeiro rascunho do escopo repetiu a frase. Antes de publicar, o executor conferiu nos dados: o GTX Basic tem mais deals, e o MG Special é o segundo. O escopo e o `facts.json` foram corrigidos; o briefing, insumo da fase 0, foi mantido e a divergência ficou registrada.
-- **Justificativa do plano para a pergunta 3 refutada (autocorreção na execução autônoma).** O plano dizia que a chance de ganho é estável enquanto o deal é jovem. As duas fotos do briefing mostram a chance caindo desde cedo. A decisão (ordenar o Foque por valor esperado) foi mantida e a justificativa trocada; o bloco 3 confirmou que a chance é plana no agregado das fotos e cai cedo nas de fim de trimestre.
-- **Generalização indevida (autocorreção na execução autônoma).** Uma versão do escopo dizia que "fora da amostra os atributos têm AUC ≈ 0,50". Isso vale só para as variáveis numéricas; para as categorias só existia o valor inflado da fase 0. O texto passou a dizer exatamente isso.
-- **Protótipo não monotônico (autocorreção na execução autônoma).** O protótipo do planejador (logística sem restrição) gerou, para o corte de 30/06, uma curva que sobe com a idade até 90 dias, o que não faz sentido para uma lista de prioridades. A inclinação passou a ser limitada a zero ou negativa. Foi uma correção de desenho antes do backtest, e a regra de começar as fotos em 31/03 foi decidida depois de ver esse protótipo, o que está declarado como limitação.
-- **Tolerância pós-hoc na investigação 2a (autocorreção na execução autônoma).** O executor escolheu a tolerância de 7 dias da terceira condição depois de ver as folgas na exploração (2, 5, 3, 7 e 4 dias), e a maior vale exatamente 7. O documento declara que a condição vale no limite e não é um teste independente, e traz um reforço sem tolerância. As outras duas condições sustentam o veredito sozinhas.
-- **`beats` com ponto flutuante (autocorreção na execução autônoma).** Na comparação de métricas, 0,61 menos 0,60 vale 0,010000000000000009 em ponto flutuante, maior que 0,01, então um empate de exatamente 1 ponto percentual contaria como vitória. Corrigido com uma folga de 1e-12 e coberto por teste.
-- **Teste de vazamento que não provava nada (autocorreção na execução autônoma).** Um teste de "modelo sem a guarda vazaria" comparava contagens que já eram diferentes por construção e passaria com a guarda quebrada. Foi trocado por um teste que mostra que as escolhas ingênuas mudam com o futuro mutado e o modelo do código não muda, e seis guardas foram estragadas de propósito para ver os testes falharem de verdade.
-- **Previsão do plano falsa (autocorreção na execução autônoma).** O plano previa que a chance sozinha nunca ordenaria melhor que a recência em AUC. Em 31/07 a AUC da chance sozinha é 0,64 e a da recência, 0,58. Está no SCORING como erro de previsão do plano.
-- **Rascunho do SCORING com afirmações que não batiam (autocorreção na execução autônoma).** O verificador de números acusou valores sem fonte, e uma conferência manual achou frases erradas ("três fotos" com 28/02 quando são duas; a recência "a 0,2 pp do valor" quando é 0,3). Tudo foi corrigido antes de fechar.
-- **`pytest` que travou sem causa conhecida (autocorreção na execução autônoma).** Uma execução da suíte passou de 10 minutos enquanto outro executor editava um arquivo de teste. O processo foi encerrado, a suíte rodou sem esse arquivo e depois inteira (passou). A causa não foi diagnosticada, e o log diz isso em vez de dar um motivo inventado.
-- **Contraste e telas vazias (autocorreção na execução autônoma).** O script de contraste achou a linha âmbar da lista Reative abaixo do contraste mínimo de elementos de interface contra o fundo branco, e a aba padrão fixa em Foque deixava vazia a tela do vendedor com mais deals. A cor foi escurecida e a aba padrão passou a ser a primeira lista com deals.
+- **Erro do briefing sobre o MG Special (execução delegada).** O briefing dizia que o produto tinha o maior volume de deals, e o primeiro rascunho do escopo repetiu a frase. A regra "todo número sai dos dados" fez o executor conferir: o GTX Basic tem mais deals, e o MG Special é o segundo. O escopo e o `facts.json` foram corrigidos. O briefing, insumo da fase 0, foi mantido, com a divergência registrada.
+- **Justificativa do plano para a pergunta 3 refutada (execução delegada).** O plano dizia que a chance de ganho é estável enquanto o deal é jovem, mas as fotos do briefing mostram a chance caindo desde cedo. A decisão de ordenar o Foque por valor esperado foi mantida, e a justificativa foi trocada.
+- **Generalização indevida (execução delegada).** Uma versão do escopo dizia que "fora da amostra os atributos têm AUC ≈ 0,50", mas isso vale só para as variáveis numéricas. O texto passou a dizer exatamente isso.
+- **Protótipo não monotônico (execução delegada).** O protótipo do planejador gerou uma curva que sobe com a idade até 90 dias, o que não faz sentido para uma lista de prioridades. A inclinação passou a ser limitada a zero ou negativa antes do backtest. A regra de começar as fotos em 31/03 foi decidida depois de ver esse protótipo, e isso está declarado como limitação.
+- **Tolerância pós-hoc na investigação 2a (execução delegada).** A tolerância de 7 dias foi escolhida depois de ver as folgas. O documento declara que a condição vale no limite e não é um teste independente.
+- **`beats` com ponto flutuante (execução delegada).** Em ponto flutuante, 0,61 menos 0,60 dá 0,010000000000000009, e com isso um empate contaria como vitória no critério pré-registrado. Corrigido e coberto por teste.
+- **Teste de vazamento que não provava nada (execução delegada).** Um teste passaria mesmo com a guarda quebrada. Foi trocado por um teste com o futuro mutado, e seis guardas foram estragadas de propósito para ver os testes falharem de verdade.
+- **Previsão do plano falsa (execução delegada).** O plano previa que a chance sozinha nunca ordenaria melhor que a recência em AUC. Em 31/07 a AUC da chance sozinha é 0,64 e a da recência, 0,58. O SCORING registra isso como erro de previsão do plano.
+- **Rascunho do SCORING com afirmações que não batiam (execução delegada).** O verificador de números acusou valores sem fonte. Uma conferência achou frases erradas, por exemplo "três fotos" onde eram duas. Tudo foi corrigido antes de fechar.
+- **`pytest` que travou (execução delegada).** Uma execução passou de 10 minutos. O log registra que a causa não foi diagnosticada, em vez de inventar um motivo. Num caso parecido no bloco 4, a causa foi achada: um assert que tentava imprimir o arquivo de dados inteiro.
+- **Contraste e telas vazias (execução delegada).** O script de contraste reprovou a cor da lista Reative. Além disso, a aba padrão deixava vazia a tela do vendedor com mais deals. As duas coisas foram corrigidas antes dos screenshots finais.
 
 ### O que eu adicionei que a IA sozinha não faria
 
-[RASCUNHO — Rafael revisar] Este texto foi escrito pelo Claude a partir do registro da fase 0 (`00_fase0_exploracao.md`); só você pode confirmar, corrigir ou cortar.
+O G4 descreve o AI Master como quem entende o problema antes de abrir a ferramenta, usa IA como alavanca e não como muleta, entrega algo que funciona e sabe o que automatizar e o que não automatizar. Trabalho com governança de IA, e foi com esse olhar que conduzi o desafio: tratei o meu próprio uso de IA como um sistema que precisa de regras, rastreabilidade e um humano responsável.
 
-- **Escolher o 003 pelo ângulo de governança de IA.** Entre quatro challenges, o Claude estimou esforço e risco de cada um; a decisão foi sua, porque o escopo é fechado, o entregável é verificável e a explicabilidade e a validação conversam com o seu histórico em governança.
-- **Não contornar o bloqueio do Kaggle.** A rede do ambiente bloqueou o download. Em vez de tentar um desvio, você usou os CSVs que já tinha baixado.
-- **Exigir backtest temporal.** Quando o primeiro cálculo de poder preditivo saiu inflado (dentro da amostra), a regra "nenhuma métrica dentro da amostra é resultado" foi sua.
-- **Tirar o vendedor do score.** A diferença entre vendedores era compatível com ruído, e usá-la penalizaria pessoas injustamente. A decisão virou a regra 4 do projeto, com teste de permutação.
-- **Não transformar 138 dias em regra.** Você leu o teto de ciclo como provável artefato do gerador sintético e decidiu tratá-lo como "nunca observado", com a curva aprendida dos dados.
-- **Pedir um model card.** O documento de limites, riscos e recalibração veio do seu ângulo de governança.
-- **Não usar Streamlit.** Por ser o default do baseline, e porque uma página estática abre com um clique.
+- **Entendi o problema antes de construir.** Li a dor da Head de RevOps como alocação de tempo, não como previsão. Daí vieram as quatro listas de ação e a métrica "receita capturada no topo". Escolhi o 003 porque o entregável é verificável e porque explicabilidade e validação são exatamente o meu campo.
+- **Desconfiei dos números certos.** Desconfiei da métrica inflada da fase 0, do win rate de 82% que parecia insight e do teto de 138 dias que parecia regra de negócio. Nos três casos a IA apresentou o número com confiança, e nos três o contexto mostrou que era artefato. Isso virou regra do projeto: nenhum número in-sample é resultado.
+- **Coloquei justiça antes de acurácia.** O vendedor ficou fora do score, porque a diferença entre vendedores é compatível com ruído e usá-la puniria pessoas por acaso. A regra virou um teste de permutação e uma linha do model card dizendo que a ferramenta não serve para avaliar vendedores.
+- **Governei a IA como governo modelos.** Apliquei ao processo os mesmos controles que aplico a sistemas de IA:
+  - separação de funções (quem planeja não executa, quem revisa não viu o processo);
+  - critério de sucesso registrado antes do teste, com um único ajuste permitido;
+  - trilha de auditoria (uma decisão por linha, com a alternativa descartada);
+  - verificação automática de cada número publicado;
+  - revisão independente com poder de crítica real.
+- **Decidi o que não automatizar.** Automatizei o volume: código, testes, documentos, revisão. Reservei para mim a escolha do problema, a tese, a regra de justiça e a publicação em meu nome. E deixei escrito antes, no prompt de operação, que o modelo só teria um ajuste e que o resultado não seria maquiado. Essa regra funcionou quando os dois revisores criticaram o mesmo ponto (dentro do Foque, o score equivale ao preço): a IA não mexeu na curva depois de ver o backtest. Mantenho essa escolha. Um gradiente de idade dentro do Foque é o próximo passo, mas com dados reais e um novo backtest, não como remendo para melhorar a nota.
+- **Exigi honestidade sobre os limites.** Pedi resultado sem maquiagem. Por isso a entrega diz onde o score perde (a recência ganha em AUC; entre deals vivos ele só empata com o valor) e por que a lista Limpe se chama "Limpe" e não "Descarte": um deal parado pode ser só CRM desatualizado.
+- **Usei IA como alavanca, com custo sob controle.** Desenhei a operação: Opus planeja, Sonnet e Haiku executam em paralelo, e um revisor de contexto limpo faz o papel da banca. Durante a execução, ajustei modelo e esforço para entregar dentro da cota, sem cortar validação nem process log.
 
 ---
 
 ## Evidências
 
-- [x] Screenshots da ferramenta com dados reais: [computador](process-log/screenshots/final_inicio_1280.png) e [celular](process-log/screenshots/final_inicio_390.png). Screenshots das conversas com IA: não há.
+Tudo está nesta pasta. O índice, que liga cada pergunta da banca ao arquivo que a responde, é o [`process-log/README.md`](process-log/README.md).
+
+- [x] Screenshots da ferramenta com dados reais: [computador](process-log/screenshots/final_inicio_1280.png), [celular](process-log/screenshots/final_inicio_390.png), e os pares antes/depois dos 3 atritos corrigidos em [`process-log/screenshots/`](process-log/screenshots/).
 - [ ] Screen recording do workflow
-- [ ] Chat exports — não há, porque a sessão foi autônoma e única (explicação em [`process-log/chat-exports/LEIA-ME.md`](process-log/chat-exports/LEIA-ME.md)). O registro do processo está nos itens abaixo.
-- [x] Git history: um commit por bloco, feito com dulwich (a máquina não tinha git), autor Rafael Pereira com o trailer `Co-Authored-By: Claude`.
-- [x] Outro: process log narrativo por bloco (de [00](process-log/00_bloco-0.md) a [05](process-log/05_bloco-5.md), mais [a fase 0](process-log/00_fase0_exploracao.md) e [o plano de execução do Opus](process-log/plano_execucao_opus.md)); [DECISIONS](docs/DECISIONS.md), com uma linha por decisão, a alternativa descartada e o motivo; scripts da fase 0 em [`process-log/scripts/`](process-log/scripts/eda.py).
-- [x] Outro: revisão independente de contexto limpo (bloco 6) com a triagem do que foi corrigido e do que não foi, em [`process-log/06_revisao-independente.md`](process-log/06_revisao-independente.md).
-- Os marcadores `[RASCUNHO — Rafael revisar]`, `[ativar — Rafael]` e `[preencher ao abrir o PR]` são pendências humanas deliberadas, pedidas pelo Rafael, e não foram preenchidas de propósito.
+- [x] Chat exports: o [export da sessão de orquestração](process-log/chat-exports/sessao-orquestracao-claude-code.md), gerado por script a partir do export oficial do app. Traz as minhas mensagens com horário, o que o orquestrador fez em resposta e cada subagente disparado (modelo e esforço). A fase 0, feita no app do Claude, está registrada em narrativa em [`00_fase0_exploracao.md`](process-log/00_fase0_exploracao.md).
+- [x] Git history: um commit por bloco (`bloco 0` a `bloco 7`), autor Rafael Pereira, com o trailer `Co-Authored-By: Claude`.
+- [x] Outro: o kit que escrevi antes de delegar: [`CLAUDE.md`](CLAUDE.md) (7 decisões fechadas), [`PROMPTS.md`](PROMPTS.md) (um prompt por bloco com checkpoints), [`GUIA.md`](GUIA.md) (armadilhas) e [`PROMPT_AUTONOMO.md`](PROMPT_AUTONOMO.md) (regras de operação e de honestidade do process log).
+- [x] Outro: o plano do planejador ([`plano_execucao_opus.md`](process-log/plano_execucao_opus.md)), os logs por bloco (de [00](process-log/00_bloco-0.md) a [07](process-log/07_revisao-do-rafael.md)), o [DECISIONS](docs/DECISIONS.md) com uma linha por decisão, e as saídas e scripts da fase 0 ([`outputs/`](process-log/outputs/), [`scripts/`](process-log/scripts/eda.py)).
+- [x] Outro: duas revisões independentes de contexto limpo, com notas, triagem e correções, em [`process-log/06_revisao-independente.md`](process-log/06_revisao-independente.md).
+- A data de envio é preenchida por mim ao abrir o PR.
 
 ---
 
