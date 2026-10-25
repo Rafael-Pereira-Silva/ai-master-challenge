@@ -9,14 +9,14 @@ Manager: Celia Rouche · Região: West
 5 deals em Foque; estes são os 3 de maior valor esperado.
 
 1. **Conta não informada** · GTX Plus Basic · US$ 1.096 de tabela · aberto há 18 dias · score 49
-   - Aberto há 18 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 77 dias).
+   - GTX Plus Basic: US$ 1.096 de tabela, valor esperado US$ 437; janela boa por mais 77 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 2. **Conta não informada** · MG Special · US$ 55 de tabela · aberto há 87 dias · score 11
-   - Aberto há 87 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 8 dias).
+   - MG Special: US$ 55 de tabela, valor esperado US$ 22; janela boa por mais 8 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 3. **Conta não informada** · MG Special · US$ 55 de tabela · aberto há 86 dias · score 11
-   - Aberto há 86 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 9 dias).
+   - MG Special: US$ 55 de tabela, valor esperado US$ 22; janela boa por mais 9 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 
 ## 3 para reativar
 

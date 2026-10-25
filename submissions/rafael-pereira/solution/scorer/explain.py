@@ -34,17 +34,13 @@ def _value_sentence(row) -> str:
 
 def _foque(row, model: ScoreModel) -> list[str]:
     left = int(row["days_to_knot"])
-    window = (
-        f"Ainda na janela boa: a chance só começa a cair depois de {_days(model.knot_days)} "
-        f"({'falta' if left == 1 else 'faltam'} {_days(left)})."
-        if left > 0
-        else f"Hoje é o último dia da janela boa: depois de {_days(model.knot_days)} a chance começa a cair."
-    )
+    window = f"janela boa por mais {_days(left)}" if left > 0 else "hoje é o último dia da janela boa"
     return [
+        f"{row['product']}: {fmt.fmt_usd(row['sales_price'])} de tabela, valor esperado "
+        f"{fmt.fmt_usd(row['expected_value'])}; {window}.",
         f"Aberto há {_days(row['age_days'])}. No histórico, deals em Engaging com essa idade foram ganhos "
         f"em {_pct(row['p_win'])} dos casos nos {model.horizon_days} dias seguintes.",
-        _value_sentence(row),
-        window,
+        f"A chance só começa a cair depois de {_days(model.knot_days)} de idade.",
     ]
 
 
@@ -69,7 +65,8 @@ def _limpe(row, model: ScoreModel) -> list[str]:
     return [
         f"Aberto há {_days(row['age_days'])} — mais do que qualquer deal já ganho no histórico "
         f"({_days(model.limpe_after_days)}).",
-        "Provável deal parado ou CRM desatualizado: confirme com o cliente e encerre ou atualize.",
+        "Pergunte ao cliente se ainda quer comprar: se não, marque Lost no CRM; "
+        "se sim, atualize o deal e mova para Reative ou Foque.",
         f"São {fmt.fmt_usd(row['sales_price'])} inflando o pipeline.",
     ]
 

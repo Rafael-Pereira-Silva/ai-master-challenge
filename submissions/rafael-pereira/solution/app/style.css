@@ -123,6 +123,7 @@ select { width: 100%; max-width: 100%; cursor: pointer; }
 .action { padding-top: 8px; padding-bottom: 12px; }
 .scope { margin: 0 0 2px; font-size: .9rem; color: var(--muted); }
 .action-text { margin: 0; font-size: clamp(1.2rem, 1rem + 1.2vw, 1.65rem); line-height: 1.35; font-weight: 600; max-width: 62ch; }
+.hint { margin: 10px 0 0; padding: 8px 12px; max-width: 62ch; border-left: 4px solid var(--note-line); background: var(--note-bg); color: var(--note-text); border-radius: 4px; font-size: 0.95rem; }
 .action-text .n { font-weight: 800; color: var(--c); white-space: nowrap; }
 
 /* ---------- abas = KPIs ---------- */
@@ -307,3 +308,5 @@ td.zero { color: var(--muted); }
   .box-body .table-wrap { padding-left: 0; padding-right: 0; }
   .btn-wide { max-width: none; }
 }
+
+.foque-warning { display: block; margin-top: 6px; padding: 6px 8px; border-left: 3px solid #d99a00; background: rgba(217,154,0,.12); }

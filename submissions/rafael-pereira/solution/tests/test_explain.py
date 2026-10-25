@@ -52,7 +52,7 @@ def test_quoted_percentages_equal_the_rounded_chance(today):
     for category in ("Foque", "Reative"):
         deal = scored[scored["category"] == category].iloc[3]
         sentences = explain.explain_deal(deal, model)
-        shown = [int(n) for n in re.findall(r"(\d+)%", sentences[0])]
+        shown = [int(n) for n in re.findall(r"(\d+)%", " ".join(sentences[:2]))]
         expected = [round(100 * model.p_fresh), round(100 * deal["p_win"])] if category == "Reative" else [
             round(100 * deal["p_win"])]
         assert shown == expected, (category, sentences[0])
@@ -61,9 +61,9 @@ def test_quoted_percentages_equal_the_rounded_chance(today):
 def test_sentences_have_the_expected_content_per_list():
     model = model_with()
     foque = explain.explain_deal(row("Foque"), model)
-    assert "Aberto há 60 dias" in foque[0] and "40%" in foque[0] and "90 dias seguintes" in foque[0]
-    assert foque[1] == "GTX Pro: valor de tabela US$ 4.821; valor esperado US$ 1.928."
-    assert "depois de 95 dias" in foque[2] and "faltam 35 dias" in foque[2]
+    assert foque[0] == "GTX Pro: US$ 4.821 de tabela, valor esperado US$ 1.928; janela boa por mais 35 dias."
+    assert "Aberto há 60 dias" in foque[1] and "40%" in foque[1] and "90 dias seguintes" in foque[1]
+    assert "depois de 95 dias" in foque[2]
 
     reative = explain.explain_deal(row("Reative", age_days=110, p_win=0.2, expected_value=964.2, days_to_knot=None,
                                        days_to_limpe=28), model)
@@ -73,6 +73,7 @@ def test_sentences_have_the_expected_content_per_list():
     limpe = explain.explain_deal(row("Limpe", age_days=300, p_win=1e-9, days_to_knot=None, days_to_limpe=None), model)
     assert "300 dias" in limpe[0] and "138 dias" in limpe[0]
     assert limpe[2] == "São US$ 4.821 inflando o pipeline."
+    assert "Pergunte ao cliente" in limpe[1] and "marque Lost" in limpe[1] and "Reative ou Foque" in limpe[1]
 
     qualifique = explain.explain_deal(row("Qualifique", age_days=None, p_win=None, expected_value=None), model)
     assert len(qualifique) == 2 and "Prospecting" in qualifique[0] and "US$ 4.821" in qualifique[1]
@@ -91,8 +92,8 @@ def test_missing_account_adds_exactly_one_hygiene_sentence():
 
 def test_singular_and_last_day_wording():
     model = model_with()
-    assert "(falta 1 dia)" in explain.explain_deal(row("Foque", days_to_knot=1), model)[2]
-    assert "último dia da janela boa" in explain.explain_deal(row("Foque", days_to_knot=0), model)[2]
+    assert "janela boa por mais 1 dia." in explain.explain_deal(row("Foque", days_to_knot=1), model)[0]
+    assert "último dia da janela boa" in explain.explain_deal(row("Foque", days_to_knot=0), model)[0]
     assert "falta 1 dia" in explain.explain_deal(row("Reative", days_to_limpe=1), model)[2]
     assert "último dia" in explain.explain_deal(row("Reative", days_to_limpe=0), model)[2]
     assert explain.explain_deal(row("Limpe", age_days=1), model)[0].startswith("Aberto há 1 dia ")
@@ -111,7 +112,7 @@ def test_explanation_uses_the_cut_model_not_a_global_one(deals):
         deal = scored[scored["category"] == "Foque"].iloc[0]
         sentences = explain.explain_deal(deal, model)
         assert f"depois de {model.knot_days} dias" in sentences[2]
-        assert f"{round(100 * deal['p_win'])}%" in sentences[0]
+        assert f"{round(100 * deal['p_win'])}%" in sentences[1]
         lines = explain.how_it_works(model)
         assert f"até {model.knot_days} dias de idade" in lines[1]
         assert f"{len(model.curve.train_snapshots)} fotos" in lines[0]

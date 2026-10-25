@@ -9,14 +9,14 @@ Manager: Celia Rouche · Região: West
 12 deals em Foque; estes são os 3 de maior valor esperado.
 
 1. **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 94 dias · score 72
-   - Aberto há 94 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (falta 1 dia).
+   - GTX Pro: US$ 4.821 de tabela, valor esperado US$ 1.923; janela boa por mais 1 dia.
+   - A chance só começa a cair depois de 95 dias de idade.
 2. **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 59 dias · score 72
-   - Aberto há 59 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 36 dias).
+   - GTX Pro: US$ 4.821 de tabela, valor esperado US$ 1.923; janela boa por mais 36 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 3. **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 57 dias · score 72
-   - Aberto há 57 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 38 dias).
+   - GTX Pro: US$ 4.821 de tabela, valor esperado US$ 1.923; janela boa por mais 38 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 
 ## 3 para reativar
 

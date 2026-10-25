@@ -9,14 +9,14 @@ Manager: Celia Rouche · Região: West
 8 deals em Foque; estes são os 3 de maior valor esperado.
 
 1. **Treequote** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 92 dias · score 75
-   - Aberto há 92 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 3 dias).
+   - GTX Plus Pro: US$ 5.482 de tabela, valor esperado US$ 2.187; janela boa por mais 3 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 2. **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 89 dias · score 75
-   - Aberto há 89 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 6 dias).
+   - GTX Plus Pro: US$ 5.482 de tabela, valor esperado US$ 2.187; janela boa por mais 6 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 3. **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 78 dias · score 75
-   - Aberto há 78 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 17 dias).
+   - GTX Plus Pro: US$ 5.482 de tabela, valor esperado US$ 2.187; janela boa por mais 17 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 
 ## 3 para reativar
 

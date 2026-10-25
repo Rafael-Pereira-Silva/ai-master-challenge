@@ -7,11 +7,11 @@ Manager: Celia Rouche · Região: West
 ## 2 para focar
 
 1. **Conta não informada** · MG Special · US$ 55 de tabela · aberto há 62 dias · score 11
-   - Aberto há 62 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 33 dias).
+   - MG Special: US$ 55 de tabela, valor esperado US$ 22; janela boa por mais 33 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 2. **Silis** · MG Special · US$ 55 de tabela · aberto há 11 dias · score 11
-   - Aberto há 11 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 84 dias).
+   - MG Special: US$ 55 de tabela, valor esperado US$ 22; janela boa por mais 84 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 
 ## 3 para reativar
 

@@ -9,14 +9,14 @@ Manager: Summer Sewald · Região: West
 10 deals em Foque; estes são os 3 de maior valor esperado.
 
 1. **The New York Inquirer** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 21 dias · score 75
-   - Aberto há 21 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 74 dias).
+   - GTX Plus Pro: US$ 5.482 de tabela, valor esperado US$ 2.187; janela boa por mais 74 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 2. **Gogozoom** · GTX Pro · US$ 4.821 de tabela · aberto há 66 dias · score 72
-   - Aberto há 66 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 29 dias).
+   - GTX Pro: US$ 4.821 de tabela, valor esperado US$ 1.923; janela boa por mais 29 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 3. **Conta não informada** · GTX Plus Basic · US$ 1.096 de tabela · aberto há 33 dias · score 49
-   - Aberto há 33 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 62 dias).
+   - GTX Plus Basic: US$ 1.096 de tabela, valor esperado US$ 437; janela boa por mais 62 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 
 ## 3 para reativar
 

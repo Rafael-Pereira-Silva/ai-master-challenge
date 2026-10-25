@@ -7,14 +7,14 @@ Manager: Cara Losch · Região: East
 ## 3 para focar
 
 1. **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 93 dias · score 72
-   - Aberto há 93 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 2 dias).
+   - GTX Pro: US$ 4.821 de tabela, valor esperado US$ 1.923; janela boa por mais 2 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 2. **Konex** · GTX Pro · US$ 4.821 de tabela · aberto há 72 dias · score 72
-   - Aberto há 72 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 23 dias).
+   - GTX Pro: US$ 4.821 de tabela, valor esperado US$ 1.923; janela boa por mais 23 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 3. **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 56 dias · score 72
-   - Aberto há 56 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 39 dias).
+   - GTX Pro: US$ 4.821 de tabela, valor esperado US$ 1.923; janela boa por mais 39 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 
 ## 3 para reativar
 

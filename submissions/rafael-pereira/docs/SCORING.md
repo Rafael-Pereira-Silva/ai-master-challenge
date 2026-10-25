@@ -372,6 +372,12 @@ Foque de hoje (126 deals) por idade: 0 a 30 dias: 18, 31 a 60 dias: 39, 61 dias 
 
 Nos dois cortes de fim de trimestre, os deals do Foque com 61 dias ou mais ganharam bem menos que os de até 30 dias: 17,4 pontos percentuais a menos em 30/06 e 41,3 pontos percentuais a menos em 30/09. Nos cortes de 31/07 e 31/08 aconteceu o contrário (19,2 pontos percentuais e 21,3 pontos percentuais a mais), porque os deals novos desses meses ganham menos. Os intervalos de confiança não incluem zero em nenhum dos quatro. A curva do modelo é plana até o joelho e diz o mesmo para todo o Foque. Como hoje (31/12/2017) é fim de trimestre, 69 dos 126 deals do Foque têm 61 dias ou mais, a faixa que nos dois fins de trimestre testados rendeu menos. O modelo não explora a posição no trimestre (decisão do bloco 2: padrões do gerador não são explorados), de modo que o Foque de hoje provavelmente está otimista nesses deals. Esse efeito está medido, não corrigido.
 
+**Por que a curva é plana dentro do Foque** (resposta à revisão independente nº 1, que apontou que um deal de 12 dias e um de 94 dias do mesmo produto recebem o mesmo score; ver `process-log/06_revisao-independente.md`):
+
+<!-- AUTO:foque-plato-sinal -->
+Dentro do Foque (o platô da curva, até 95 dias), a diferença de ganhos em 90 dias entre os deals de 61 dias ou mais e os de 0 a 30 dias foi de -17,4 pp em 30/06, +19,2 pp em 31/07, +21,3 pp em 31/08 e -41,3 pp em 30/09. O sinal troca entre os cortes (2 negativos e 2 positivos), então dentro do platô não há uma inclinação estável a aprender, e é isso que justifica a curva plana até o joelho em vez de premiar os mais novos. O salto está no joelho: é depois dele que a chance cai.
+<!-- /AUTO:foque-plato-sinal -->
+
 ## 11. Limitações
 
 - **Dados sintéticos.** O dataset é gerado; em CRM real, o decaimento seria mais suave. O teto de 138 dias é provável artefato do gerador e o Limpe herda esse artefato (o limite aprendido é o maior ciclo já ganho). Em dados reais, um deal com mais de 138 dias pode ser ganho.

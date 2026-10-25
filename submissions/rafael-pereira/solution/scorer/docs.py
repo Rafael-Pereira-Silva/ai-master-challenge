@@ -429,6 +429,33 @@ def _sc_foque_idade(bt: dict) -> str:
     return f"{t1}\n\n{t2}\n\nFoque de hoje ({fmt_int(total)} deals) por idade: {parts}."
 
 
+@_scoring_block("foque-plato-sinal")
+def _sc_plato_sinal(bt: dict) -> str:
+    """Dentro do platô (Foque), a diferença 61+ menos 0-30 dias troca de sinal entre cortes: sem inclinação estável."""
+    cuts = bt["cuts"]
+    diffs = [(c["cut"], c["foque_por_idade"]["diferenca_ultima_menos_primeira_90d"]["diff"]) for c in cuts]
+    listing = _list_pt([f"{fmt_pp(d)} em {_short_date(cut)}" for cut, d in diffs])
+    knot = fmt_int(bt["hoje"]["modelo"]["knot_days"])
+    neg = [cut for cut, d in diffs if d < 0]
+    pos = [cut for cut, d in diffs if d > 0]
+    lines = [
+        f"Dentro do Foque (o platô da curva, até {knot} dias), a diferença de ganhos em 90 dias entre os deals de 61 dias ou mais "
+        f"e os de 0 a 30 dias foi de {listing}."
+    ]
+    if neg and pos:
+        lines.append(
+            f"O sinal troca entre os cortes ({fmt_int(len(neg))} negativos e {fmt_int(len(pos))} positivos), então dentro do platô "
+            "não há uma inclinação estável a aprender, e é isso que justifica a curva plana até o joelho em vez de premiar os mais novos. "
+            "O salto está no joelho: é depois dele que a chance cai."
+        )
+    else:
+        lines.append(
+            "O sinal não troca entre os cortes, o que enfraquece a justificativa da curva plana dentro do platô; "
+            "este texto precisa ser revisto."
+        )
+    return " ".join(lines)
+
+
 def _delta_cell(r: dict) -> str:
     return f"{fmt_pp(r['diff'])}"
 

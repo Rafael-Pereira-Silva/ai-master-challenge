@@ -9,14 +9,14 @@ Manager: Rocco Neubert · Região: East
 8 deals em Foque; estes são os 3 de maior valor esperado.
 
 1. **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 10 dias · score 75
-   - Aberto há 10 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 85 dias).
+   - GTX Plus Pro: US$ 5.482 de tabela, valor esperado US$ 2.187; janela boa por mais 85 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 2. **Toughzap** · GTX Pro · US$ 4.821 de tabela · aberto há 77 dias · score 72
-   - Aberto há 77 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 18 dias).
+   - GTX Pro: US$ 4.821 de tabela, valor esperado US$ 1.923; janela boa por mais 18 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 3. **Inity** · GTX Pro · US$ 4.821 de tabela · aberto há 57 dias · score 72
-   - Aberto há 57 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 38 dias).
+   - GTX Pro: US$ 4.821 de tabela, valor esperado US$ 1.923; janela boa por mais 38 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 
 ## 3 para reativar
 

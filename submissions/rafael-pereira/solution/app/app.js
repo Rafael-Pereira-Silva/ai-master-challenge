@@ -188,6 +188,8 @@
     el.innerHTML = '<div class="wrap banner-in"><p><strong>Modo teste</strong> — o que o score recomendaria em ' +
       dateBR(snap.date) + ' e o que aconteceu até ' + dateBR(D.meta.reference_date) +
       '. Só entra o que se sabia naquela data.</p>' +
+      '<p class="banner-note" data-testid="test-banner-note">Os números de resultado são do time inteiro de propósito: ' +
+      'não mostramos taxa de vitória por vendedor, porque a diferença entre vendedores é compatível com ruído.</p>' +
       '<button type="button" class="btn" id="back-today" data-testid="back-to-today">Voltar para hoje</button></div>';
   }
 
@@ -201,6 +203,17 @@
   }
   function nHtml(c, text) { return '<span class="n cat-' + c + '">' + text + '</span>'; }
 
+  // Sem Foque nem Reative e com Prospecting: a receita nova está no Qualifique (não existe no modo teste).
+  function noLiveDeals(snap, st) {
+    return !isTest(snap) && !st.Foque.n && !st.Reative.n && st.Qualifique.n > 0;
+  }
+  // Primeira tela: sem vendedor escolhido, pede o nome (a visão do manager continua igual).
+  function renderHint() {
+    var el = $('pick-hint');
+    el.hidden = !!state.vendedor;
+    el.textContent = state.vendedor ? '' : 'Escolha seu nome em “Quem é você?” para ver só os seus deals.';
+  }
+
   function renderAction(snap, st, total) {
     $('scope-label').textContent = scopeText();
     var el = $('action-summary');
@@ -211,12 +224,16 @@
       return;
     }
     var parts = [];
+    var newRevenue = noLiveDeals(snap, st);
+    if (newRevenue) {
+      parts.push('qualifique ' + nHtml('Qualifique', num(st.Qualifique.n)) + ' em Prospecting (a receita nova está no Qualifique)');
+    }
     if (st.Foque.n) { parts.push('foque em ' + nHtml('Foque', num(st.Foque.n)) + ' ' + plural(st.Foque.n, 'deal', 'deals')); }
     if (st.Reative.n) { parts.push('reative ' + nHtml('Reative', num(st.Reative.n)) + ' antes que ' + plural(st.Reative.n, 'esfrie', 'esfriem')); }
     if (st.Limpe.n) {
       parts.push('limpe ' + nHtml('Limpe', num(st.Limpe.n)) + ' do CRM (' + nHtml('Limpe', usd(st.Limpe.valor)) + ' parados)');
     }
-    if (!isTest(snap) && st.Qualifique.n) { parts.push('qualifique ' + nHtml('Qualifique', num(st.Qualifique.n)) + ' em Prospecting'); }
+    if (!newRevenue && !isTest(snap) && st.Qualifique.n) { parts.push('qualifique ' + nHtml('Qualifique', num(st.Qualifique.n)) + ' em Prospecting'); }
     var lead = isTest(snap) ? 'Em ' + dateBR(snap.date) + ' o score teria dito: ' : 'Esta semana: ';
     el.innerHTML = lead + joinPt(parts) + '.';
   }
@@ -355,16 +372,27 @@
   var items = [];
   var shown = 0;
 
+  /* Aviso do Foque com idade alta: vem de backtest.notes (calculada do JSON de métricas pelo build). */
+  function foqueWarning() {
+    var notes = (D.backtest && D.backtest.notes) || [];
+    for (var i = 0; i < notes.length; i++) {
+      if (notes[i].indexOf('No Foque, ') === 0) {
+        return ' <span class="foque-warning" data-testid="foque-warning"><strong>Atenção:</strong> ' + esc(notes[i]) + '</span>';
+      }
+    }
+    return '';
+  }
+
   function instruction(cat, m) {
     switch (cat) {
       case 'Foque':
         return '<strong>Avance</strong> estes deals primeiro: a chance de ganho só começa a cair depois de ' + days(m.knot_days) +
-          ' abertos. Ordem: maior valor esperado (chance × preço de tabela).';
+          ' abertos. Ordem: maior valor esperado (chance × preço de tabela).' + foqueWarning();
       case 'Reative':
         return '<strong>Fale com o cliente esta semana:</strong> a chance já está caindo, e nenhum deal foi ganho depois de ' +
           days(m.limpe_after_days) + ' abertos. Ordem: maior valor esperado.';
       case 'Limpe':
-        return '<strong>Confirme com o cliente e encerre ou atualize no CRM:</strong> estes deals estão abertos há mais tempo do que qualquer deal já ganho (' +
+        return '<strong>Pergunte ao cliente se ainda quer comprar:</strong> se não, marque Lost no CRM; se sim, atualize o deal. Estes deals estão abertos há mais tempo do que qualquer deal já ganho (' +
           days(m.limpe_after_days) + '). Ordem: maior valor de tabela.';
       default:
         return '<strong>Marque a primeira conversa ou descarte:</strong> estes deals ainda estão em Prospecting, sem data de engajamento, então não há score. Ordem: maior valor de tabela.';
@@ -424,7 +452,8 @@
                                 : '<span class="score">Score ' + d.score + '</span>';
     var l2 = score + '<span class="price">' + usd(d.price) + '</span>';
     if (d.p != null) {
-      l2 += '<span class="chance" title="Chance de ganho nos próximos ' + days(HORIZON) + '">chance ' + pct0(d.p) + '</span>';
+      l2 += '<span class="chance" title="Chance de ganho nos próximos ' + days(HORIZON) + '">chance ' +
+        (d.p > 0 && d.p < 0.005 ? '&lt;' + pct0(0.01) : pct0(d.p)) + '</span>';
     }
     var meta = [];                                   // 3ª linha: idade e prazo (quebra como texto corrido)
     if (d.age != null) { meta.push('há ' + days(d.age)); }
@@ -574,6 +603,7 @@
   // (um vendedor sem nada em Foque não deve cair numa tela vazia).
   function pickCat(snap, st) {
     if (state.aba) { return state.aba; }
+    if (noLiveDeals(snap, st)) { return 'Qualifique'; }
     for (var i = 0; i < CATS.length; i += 1) {
       if (isTest(snap) && CATS[i] === 'Qualifique') { continue; }
       if (st[CATS[i]].n) { return CATS[i]; }
@@ -589,6 +619,7 @@
     renderControls(snap);
     renderBanner(snap);
     renderAction(snap, st, list.length);
+    renderHint();
     renderTabs(snap, st);
     renderResults(snap);
     renderTeam(snap, list);

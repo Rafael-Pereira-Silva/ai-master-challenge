@@ -9,14 +9,14 @@ Manager: Summer Sewald · Região: West
 13 deals em Foque; estes são os 3 de maior valor esperado.
 
 1. **Rangreen** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 69 dias · score 75
-   - Aberto há 69 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 26 dias).
+   - GTX Plus Pro: US$ 5.482 de tabela, valor esperado US$ 2.187; janela boa por mais 26 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 2. **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 87 dias · score 72
-   - Aberto há 87 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 8 dias).
+   - GTX Pro: US$ 4.821 de tabela, valor esperado US$ 1.923; janela boa por mais 8 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 3. **Zencorporation** · GTX Pro · US$ 4.821 de tabela · aberto há 57 dias · score 72
-   - Aberto há 57 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 38 dias).
+   - GTX Pro: US$ 4.821 de tabela, valor esperado US$ 1.923; janela boa por mais 38 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 
 ## 3 para reativar
 

@@ -9,14 +9,14 @@ Manager: Rocco Neubert · Região: East
 5 deals em Foque; estes são os 3 de maior valor esperado.
 
 1. **Bluth Company** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 55 dias · score 75
-   - Aberto há 55 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 40 dias).
+   - GTX Plus Pro: US$ 5.482 de tabela, valor esperado US$ 2.187; janela boa por mais 40 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 2. **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 12 dias · score 72
-   - Aberto há 12 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 83 dias).
+   - GTX Pro: US$ 4.821 de tabela, valor esperado US$ 1.923; janela boa por mais 83 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 3. **Conta não informada** · MG Advanced · US$ 3.393 de tabela · aberto há 88 dias · score 67
-   - Aberto há 88 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 7 dias).
+   - MG Advanced: US$ 3.393 de tabela, valor esperado US$ 1.353; janela boa por mais 7 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 
 ## 3 para reativar
 

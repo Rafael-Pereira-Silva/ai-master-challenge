@@ -9,14 +9,14 @@ Manager: Cara Losch · Região: East
 7 deals em Foque; estes são os 3 de maior valor esperado.
 
 1. **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 94 dias · score 75
-   - Aberto há 94 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (falta 1 dia).
+   - GTX Plus Pro: US$ 5.482 de tabela, valor esperado US$ 2.187; janela boa por mais 1 dia.
+   - A chance só começa a cair depois de 95 dias de idade.
 2. **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 91 dias · score 75
-   - Aberto há 91 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 4 dias).
+   - GTX Plus Pro: US$ 5.482 de tabela, valor esperado US$ 2.187; janela boa por mais 4 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 3. **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 61 dias · score 75
-   - Aberto há 61 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 34 dias).
+   - GTX Plus Pro: US$ 5.482 de tabela, valor esperado US$ 2.187; janela boa por mais 34 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 
 ## 2 para reativar
 

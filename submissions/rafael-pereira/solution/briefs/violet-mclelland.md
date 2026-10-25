@@ -9,14 +9,14 @@ Manager: Cara Losch · Região: East
 8 deals em Foque; estes são os 3 de maior valor esperado.
 
 1. **Conta não informada** · GTX Plus Basic · US$ 1.096 de tabela · aberto há 76 dias · score 49
-   - Aberto há 76 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 19 dias).
+   - GTX Plus Basic: US$ 1.096 de tabela, valor esperado US$ 437; janela boa por mais 19 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 2. **Conta não informada** · GTX Basic · US$ 550 de tabela · aberto há 76 dias · score 39
-   - Aberto há 76 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 19 dias).
+   - GTX Basic: US$ 550 de tabela, valor esperado US$ 219; janela boa por mais 19 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 3. **Conta não informada** · MG Special · US$ 55 de tabela · aberto há 60 dias · score 11
-   - Aberto há 60 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 35 dias).
+   - MG Special: US$ 55 de tabela, valor esperado US$ 22; janela boa por mais 35 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 
 ## 3 para reativar
 

@@ -9,14 +9,14 @@ Manager: Celia Rouche · Região: West
 6 deals em Foque; estes são os 3 de maior valor esperado.
 
 1. **Betasoloin** · GTK 500 · US$ 26.768 de tabela · aberto há 95 dias · score 100
-   - Aberto há 95 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Hoje é o último dia da janela boa: depois de 95 dias a chance começa a cair.
+   - GTK 500: US$ 26.768 de tabela, valor esperado US$ 10.677; hoje é o último dia da janela boa.
+   - A chance só começa a cair depois de 95 dias de idade.
 2. **Zoomit** · MG Advanced · US$ 3.393 de tabela · aberto há 81 dias · score 67
-   - Aberto há 81 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 14 dias).
+   - MG Advanced: US$ 3.393 de tabela, valor esperado US$ 1.353; janela boa por mais 14 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 3. **Conta não informada** · GTX Basic · US$ 550 de tabela · aberto há 70 dias · score 39
-   - Aberto há 70 dias. No histórico, deals em Engaging com essa idade foram ganhos em 40% dos casos nos 90 dias seguintes.
-   - Ainda na janela boa: a chance só começa a cair depois de 95 dias (faltam 25 dias).
+   - GTX Basic: US$ 550 de tabela, valor esperado US$ 219; janela boa por mais 25 dias.
+   - A chance só começa a cair depois de 95 dias de idade.
 
 ## 3 para reativar
 

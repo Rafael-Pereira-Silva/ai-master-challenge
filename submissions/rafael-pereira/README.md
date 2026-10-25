@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-O que separa os deals do CRM é o frescor (há quanto tempo estão abertos), não os atributos: produto, setor, região e porte ficam todos entre 60% e 65% de win rate, enquanto na foto de 30/09/2017 os deals com até 30 dias foram ganhos em 50% dos casos e os com mais de 90 dias, em 0%. Em quatro datas passadas, os 20% de deals no topo do score concentraram em média 61,1% da receita que foi ganha depois, contra 48,1% se o time ordenasse só pelo valor, 29,7% pela recência e 20,0% num sorteio, e o critério fixado antes do teste passou sem ajuste. Hoje, 1.291 dos 1.589 deals em Engaging estão abertos há mais tempo que o maior ciclo já fechado, e a lista Limpe soma cerca de US$ 3,2 mi de valor de tabela provavelmente inflado. As ressalvas pesam: entre os deals já resolvidos o score só empata com o valor, a recência ganha em AUC em três dos quatro cortes e o dataset é sintético. Recomendo um sprint de limpeza da lista Limpe, confirmando cada deal com o cliente antes de encerrar, e uma rotina de segunda-feira com as listas Foque e Reative.
+O que separa os deals do CRM é o frescor (há quanto tempo estão abertos), não o produto, o setor, a região ou o porte (todos ficam entre 60% e 65% de vitória), e a ferramenta usa isso para dizer a cada vendedor onde focar, o que reativar e o que largar. Em quatro datas passadas, os 20% de deals no topo do score concentraram em média 61,1% da receita que foi ganha depois, contra 48,1% se o time ordenasse só pelo valor, 29,7% pelos mais recentes e 20,0% num sorteio, e o critério fixado antes do teste passou sem ajuste. Hoje, 1.291 dos 1.589 deals em Engaging estão abertos há mais tempo que o maior ciclo já fechado, e a lista Limpe soma cerca de US$ 3,2 mi de valor de tabela provavelmente inflado. O ganho vem sobretudo de tirar esses deals parados do topo: entre os deals ainda vivos o score só empata com a ordenação por valor, e os dados são sintéticos. Recomendo um sprint de limpeza da lista Limpe, confirmando cada deal com o cliente antes de encerrar, e uma rotina de segunda-feira com as listas Foque e Reative.
 
 ---
 
@@ -59,6 +59,12 @@ Cinco achados, todos gerados por script a partir do `backtest_metrics.json`:
 - **Entre os deals já resolvidos o score empata com o valor:** receita média no top 20% de 48,7% contra 49,0%, e a maior diferença em um corte é de 0,5 pp. A vantagem do backtest completo vem de tirar do topo os deals parados.
 - **O Foque de hoje está otimista:** 69 dos 126 deals têm 61 dias ou mais, e nos fins de trimestre testados esses deals ganharam menos que os de até 30 dias (-17,4 pp em 30/06 e -41,3 pp em 30/09). O modelo não corrige isso.
 <!-- /AUTO:readme-achados -->
+
+**Por que o score não distingue um deal de 12 dias de um de 94 dentro do Foque:** não mexi na curva depois de ver o backtest (seria ajuste pós-hoc), e o número abaixo mostra que não havia direção estável para ela seguir.
+
+<!-- AUTO:foque-plato-sinal -->
+Dentro do Foque (o platô da curva, até 95 dias), a diferença de ganhos em 90 dias entre os deals de 61 dias ou mais e os de 0 a 30 dias foi de -17,4 pp em 30/06, +19,2 pp em 31/07, +21,3 pp em 31/08 e -41,3 pp em 30/09. O sinal troca entre os cortes (2 negativos e 2 positivos), então dentro do platô não há uma inclinação estável a aprender, e é isso que justifica a curva plana até o joelho em vez de premiar os mais novos. O salto está no joelho: é depois dele que a chance cai.
+<!-- /AUTO:foque-plato-sinal -->
 
 **Backtest corte a corte** (a tabela completa, com ganhos capturados, bootstrap e calibração, está no [SCORING](docs/SCORING.md)):
 
@@ -132,9 +138,15 @@ Para a Head de RevOps, em ordem de prioridade:
 | Claude Code com Opus 5.5 (orquestrador) | Preparar o ambiente, dividir o trabalho em blocos, disparar os executores (até 3 em paralelo), conferir cada entrega e commitar |
 | Subagente Claude Opus 5.5 (planejador, somente leitura) | Escrever o plano de execução com a especificação de cada bloco e rodar protótipos descartáveis (`process-log/plano_execucao_opus.md`) |
 | Subagentes Claude Sonnet e Haiku (executores) | Executar os blocos: Haiku no bloco 0; Sonnet nos blocos 1 a 5 (cada log declara o executor) |
-| Subagente de contexto limpo (revisor, bloco 6) | Revisão independente: avalia a submissão contra os critérios do challenge sem ter visto o processo (planejado; relatório em `process-log/06_revisao-independente.md` quando existir) |
+| Subagente de contexto limpo (revisor, bloco 6) | Revisão independente: avalia a submissão contra os critérios do challenge sem ter visto o processo (duas revisões, com nota média entre três e quatro de cinco nas duas, relatório em `process-log/06_revisao-independente.md`) |
 
 ### Workflow
+
+**Quem decidiu o quê.**
+
+| Decisões do Rafael (fase 0) | Execução autônoma do Claude (blocos 0 a 6) |
+|---|---|
+| Escolher o 003; usar os CSVs que já tinha baixado; exigir backtest temporal; tirar o vendedor do score; tratar o teto de 138 dias como provável artefato; pedir o model card; não usar Streamlit (lista completa em "O que eu adicionei", ainda em rascunho para ele confirmar). | Tudo o que está nos passos 0 a 6 abaixo: escopo, limpeza, score, backtest, interface, documentos e revisão independente, com as decisões autônomas registradas em `docs/DECISIONS.md`. O registro não mostra intervenção humana nesses blocos. |
 
 0. **Fase 0 e bloco 0 (setup).** No app do Claude: leitura do repositório, escolha do 003 e exploração dos dados, com a hipótese de frescor validada em duas fotos do pipeline. Depois, o orquestrador montou o ambiente (venv, clone via dulwich, Playwright usando o Edge do sistema) e um executor Haiku criou a estrutura e reproduziu a fase 0 contra o briefing.
 1. **Bloco 1, escopo.** Um executor Sonnet escreveu o escopo e respondeu sozinho às 4 perguntas em aberto do briefing, cada uma com alternativa descartada e evidência.
@@ -142,7 +154,7 @@ Para a Head de RevOps, em ordem de prioridade:
 3. **Bloco 3, score e validação.** Primeiro a checagem de vazamento, escrita antes do código; depois features, score e explicação; por fim o backtest com o critério registrado antes de qualquer número de desempenho. Um segundo executor escreveu em paralelo as primitivas de métrica.
 4. **Bloco 4, ferramenta.** Um executor construiu a interface e o script de verificação contra dados falsos, em paralelo ao motor, a partir de um contrato de dados escrito antes; depois o build real gerou os dados e a página foi verificada com Playwright no Edge, com screenshots.
 5. **Bloco 5, documentação.** Este README e o model card, com todos os números vindos de blocos regenerados e conferidos por teste.
-6. **Bloco 6, revisão independente (planejado; vem depois deste texto).** Dois revisores de contexto limpo avaliam a submissão (o segundo sem ver a primeira revisão), as críticas com nota baixa são corrigidas sem mudar o modelo, e o texto do PR é preparado.
+6. **Bloco 6, revisão independente.** Um revisor de contexto limpo avaliou a submissão; as críticas de interface e documentação foram corrigidas sem mudar o modelo, e as de modelagem viraram texto com número ([relatório e triagem](process-log/06_revisao-independente.md)). Uma segunda revisão, de outro revisor sem acesso à primeira, e o texto do PR vêm depois.
 
 ### Onde a IA errou e como corrigi
 
@@ -189,7 +201,8 @@ Só episódios registrados em `process-log/` e em `docs/DECISIONS.md`.
 - [ ] Chat exports — não há, porque a sessão foi autônoma e única (explicação em [`process-log/chat-exports/LEIA-ME.md`](process-log/chat-exports/LEIA-ME.md)). O registro do processo está nos itens abaixo.
 - [x] Git history: um commit por bloco, feito com dulwich (a máquina não tinha git), autor Rafael Pereira com o trailer `Co-Authored-By: Claude`.
 - [x] Outro: process log narrativo por bloco (de [00](process-log/00_bloco-0.md) a [05](process-log/05_bloco-5.md), mais [a fase 0](process-log/00_fase0_exploracao.md) e [o plano de execução do Opus](process-log/plano_execucao_opus.md)); [DECISIONS](docs/DECISIONS.md), com uma linha por decisão, a alternativa descartada e o motivo; scripts da fase 0 em [`process-log/scripts/`](process-log/scripts/eda.py).
-- [ ] Outro: revisões independentes de contexto limpo (bloco 6), em `process-log/06_revisao-independente.md`, que será acrescentado depois deste texto.
+- [x] Outro: revisão independente de contexto limpo (bloco 6) com a triagem do que foi corrigido e do que não foi, em [`process-log/06_revisao-independente.md`](process-log/06_revisao-independente.md).
+- Os marcadores `[RASCUNHO — Rafael revisar]`, `[ativar — Rafael]` e `[preencher ao abrir o PR]` são pendências humanas deliberadas, pedidas pelo Rafael, e não foram preenchidas de propósito.
 
 ---
 
