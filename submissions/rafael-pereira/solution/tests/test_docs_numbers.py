@@ -94,6 +94,22 @@ def test_checker_does_not_confuse_plain_small_numbers_with_facts():
     assert bad_tokens("são 30 vendedores em 6 times; 99 não é checado, 100 é") == ["100"]
 
 
+@pytest.mark.parametrize("name,old,new", [
+    ("README.md", "61,1%", "93,1%"),
+    ("README.md", "US$ 3,2 mi", "US$ 3,3 mi"),
+    ("README.md", "1.291", "1.292"),
+    ("MODEL_CARD.md", "1.425", "1.426"),
+    ("MODEL_CARD.md", "0,996", "0,931"),
+])
+def test_checker_catches_a_wrong_number_in_the_real_readme_and_model_card(name, old, new, pool):
+    path = next(p for p in config.COVERED_DOCS if p.name == name)
+    text = docs.read_doc(path)
+    assert old in docs.prose_text(text), f"{old!r} não está na prosa de {name}"
+    mutated = docs.prose_text(text).replace(old, new, 1)
+    bad = [t.text for t in docs.unmatched_numbers(mutated, pool, docs.names_with_digits())]
+    assert new in " ".join(bad)
+
+
 def test_auto_marker_without_renderer_is_an_error():
     with pytest.raises(KeyError):
         docs.render_text("<!-- AUTO:inexistente -->\n<!-- /AUTO:inexistente -->", {"outro": "x"})

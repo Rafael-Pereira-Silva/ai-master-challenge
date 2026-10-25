@@ -41,6 +41,10 @@ ATTRIBUTE_L2 = 1.0  # penalidade L2 nos coeficientes do atributo (teste de atrib
 FOQUE_AGE_BANDS = ((0, 30), (31, 60), (61, None))  # faixas de idade para o achado "Foque 61+ dias"
 CATEGORIES = ("Foque", "Reative", "Limpe", "Qualifique")  # as 4 listas de ação, na ordem de exibição
 
+# --- Recalibração (MODEL_CARD, bloco 5) -----------------------------------------------------
+RECALIBRATION_SHIFT_PP = 10  # X: alerta quando a taxa de ganho em 90 dias de uma faixa de idade se afasta da chance do modelo em mais de X pp
+RECALIBRATION_MIN_BAND_N = 100  # faixas com menos deals que isso não disparam o alerta (ruído de amostra)
+
 # --- Critérios pré-definidos das investigações do bloco 2 ---------------------------------
 # 2a: o win rate do 1º trimestre é artefato de recorte se as três condições valerem.
 Q1_MARCH_TOLERANCE_PP = 5  # março a +-5 pp da média dos meses de fim de trimestre seguintes
@@ -73,5 +77,11 @@ ALLOWED_CONSTANTS = {
 
 # --- Documentos cobertos por `python -m scorer.docs` e pelo teste de números ----------------
 # (SCORING.md, MODEL_CARD.md e README.md entram nos blocos 3 e 5.)
-COVERED_DOCS = [DOCS_DIR / "DATA_QUALITY.md", DOCS_DIR / "SCOPE.md", DOCS_DIR / "SCORING.md"]
+COVERED_DOCS = [
+    DOCS_DIR / "DATA_QUALITY.md",
+    DOCS_DIR / "SCOPE.md",
+    DOCS_DIR / "SCORING.md",
+    DOCS_DIR / "MODEL_CARD.md",
+    SUBMISSION_DIR / "README.md",
+]
 BACKTEST_TABLES_MD = PROCESSED_DIR / "backtest_tables.md"  # gerado no bloco 3

@@ -562,6 +562,147 @@ def _sc_hoje(bt: dict) -> str:
 
 
 # =============================================================================================
+# Renderizadores do MODEL_CARD.md e do README.md (bloco 5)
+# =============================================================================================
+def _short_date(iso: str) -> str:
+    """'2017-06-30' -> '30/06'."""
+    return fmt_date(iso)[:5]
+
+
+def _list_pt(items: list[str]) -> str:
+    """['a', 'b', 'c'] -> 'a, b e c'."""
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " e " + items[-1]
+
+
+def _worst_cut(bt: dict) -> dict:
+    """O corte de menor margem do score sobre o melhor baseline (o 'pior corte' do critério)."""
+    def margin(r: dict) -> float:
+        return r["score"] - max(r["valor"], r["recencia"], r["aleatorio_media"], r["aleatorio_p95"])
+
+    worst = min(bt["criterion"]["per_cut"], key=margin)
+    return next(c for c in bt["cuts"] if c["cut"] == worst["cut"])
+
+
+def _perf_row(label: str, metodos: dict) -> list:
+    return [
+        label, _pct0(metodos["score"]["receita_top20"]), _pct0(metodos["valor"]["receita_top20"]),
+        _pct0(metodos["recencia"]["receita_top20"]), _pct0(metodos["aleatorio"]["receita_top20"]),
+        fmt_dec(metodos["score"]["auc"], 2), fmt_dec(metodos["recencia"]["auc"], 2),
+    ]
+
+
+_PERF_HEADERS = ["", "Receita no top 20%: score", "valor", "recência", "aleatório", "AUC do score", "AUC da recência"]
+
+
+@_scoring_block("mc-desempenho")
+def _mc_desempenho(bt: dict) -> str:
+    worst = _worst_cut(bt)
+    rows = [
+        _perf_row(f"Média dos {fmt_int(bt['headline']['n_cortes'])} cortes", bt["media_cortes"]["metodos"]),
+        _perf_row(f"Pior corte ({fmt_date(worst['cut'])})", worst["metodos"]),
+    ]
+    crit = bt["criterion"]
+    verdict = "PASSOU" if crit["passed"] else "FALHOU"
+    adjust = "com ajuste" if crit["adjustment_applied"] else "sem ajuste"
+    note = (
+        f"Pior corte = o de menor margem do score sobre o melhor baseline. Critério pré-registrado: **{verdict}**, {adjust}."
+    )
+    return md_table(_PERF_HEADERS, rows) + "\n\n" + note
+
+
+@_scoring_block("mc-recalibracao")
+def _mc_recalibracao(bt: dict) -> str:
+    x = config.RECALIBRATION_SHIFT_PP
+    total = alarms = 0
+    for cut in bt["cuts"]:
+        for band in cut["calibracao"]:
+            if band["n"] >= config.RECALIBRATION_MIN_BAND_N:
+                total += 1
+                alarms += abs(band["p_modelo"] - band["taxa_observada_90d"]) * 100 > x
+    return (
+        f"X = {fmt_int(x)} pp (`config.RECALIBRATION_SHIFT_PP`). Teste de bom senso no backtest: entre as "
+        f"{fmt_int(total)} faixas de idade com pelo menos {fmt_int(config.RECALIBRATION_MIN_BAND_N)} deals "
+        f"(corte x faixa), {fmt_int(alarms)} teriam acendido o alerta, isto é, a chance do modelo ficou a mais de "
+        f"{fmt_int(x)} pp da taxa de ganho em 90 dias observada. O alerta não é raro."
+    )
+
+
+@_scoring_block("readme-backtest")
+def _readme_backtest(bt: dict) -> str:
+    rows = [_perf_row(f"**Média dos {fmt_int(bt['headline']['n_cortes'])} cortes**", bt["media_cortes"]["metodos"])]
+    rows += [_perf_row(fmt_date(c["cut"]), c["metodos"]) for c in bt["cuts"]]
+    headers = ["Corte"] + _PERF_HEADERS[1:]
+    note = (
+        "Receita capturada pelos 20% de deals no topo da ordenação, como fração da receita que foi de fato ganha depois. "
+        "Aleatório = média de 200 sorteios. Cada corte usa só o que o CRM sabia naquele dia."
+    )
+    return md_table(headers, rows) + "\n\n" + note
+
+
+@_scoring_block("readme-hoje")
+def _readme_hoje(bt: dict) -> str:
+    hoje = bt["hoje"]
+    m = hoje["modelo"]
+    rule = {
+        "Foque": f"até {fmt_int(m['knot_days'])} dias",
+        "Reative": f"{fmt_int(m['knot_days'] + 1)} a {fmt_int(m['limpe_after_days'])} dias",
+        "Limpe": f"mais de {fmt_int(m['limpe_after_days'])} dias",
+        "Qualifique": "Prospecting (sem data)",
+    }
+    action = {"Foque": "avançar", "Reative": "retomar o contato", "Limpe": "confirmar e encerrar ou atualizar", "Qualifique": "qualificar"}
+    rows = [
+        [cat, rule[cat], action[cat], fmt_int(hoje["categorias"][cat]["n"]), _usd(hoje["categorias"][cat]["valor_tabela"])]
+        for cat in config.CATEGORIES
+    ]
+    return md_table(["Lista", "Idade do deal", "Ação", "Deals", "Valor de tabela"], rows, "lllrr")
+
+
+@_scoring_block("readme-achados")
+def _readme_achados(bt: dict) -> str:
+    crit = bt["criterion"]
+    head = bt["headline"]
+    cuts = bt["cuts"]
+    lines = []
+    lines.append(
+        "- **Critério pré-registrado: {v}, {a}.** O score vence valor, recência e o sorteio nos {n} cortes."
+        .format(v="PASSOU" if crit["passed"] else "FALHOU", a="sem ajuste" if not crit["adjustment_applied"] else "com ajuste",
+                n=fmt_int(head["n_cortes"]))
+    )
+    lines.append(
+        f"- **Receita média no top 20%:** score {_pct0(head['receita_score'])}, valor {_pct0(head['receita_valor'])}, "
+        f"recência {_pct0(head['receita_recencia'])}, aleatório {_pct0(bt['media_cortes']['metodos']['aleatorio']['receita_top20'])}."
+    )
+    rec_wins = [c["cut"] for c in cuts if c["metodos"]["recencia"]["auc"] > c["metodos"]["score"]["auc"]]
+    sc_wins = [c["cut"] for c in cuts if c["metodos"]["score"]["auc"] > c["metodos"]["recencia"]["auc"]]
+    best = max(cuts, key=lambda c: c["metodos"]["recencia"]["auc"] - c["metodos"]["score"]["auc"])
+    lines.append(
+        f"- **A recência ganha em AUC** em {fmt_int(len(rec_wins))} dos {fmt_int(head['n_cortes'])} cortes "
+        f"({_list_pt([_short_date(d) for d in rec_wins])}); a maior folga é em {fmt_date(best['cut'])}, com "
+        f"{fmt_dec(best['metodos']['recencia']['auc'], 2)} contra {fmt_dec(best['metodos']['score']['auc'], 2)} do score. "
+        f"O score só ganha em AUC em {_list_pt([_short_date(d) for d in sc_wins])}."
+    )
+    res = [(c["resolvidos"]["metodos"]["score"]["receita_top20"], c["resolvidos"]["metodos"]["valor"]["receita_top20"]) for c in cuts]
+    mean_s = sum(r[0] for r in res) / len(res)
+    mean_v = sum(r[1] for r in res) / len(res)
+    gap = max(abs(r[0] - r[1]) for r in res)
+    lines.append(
+        f"- **Entre os deals já resolvidos o score empata com o valor:** receita média no top 20% de {_pct0(mean_s)} "
+        f"contra {_pct0(mean_v)}, e a maior diferença em um corte é de {fmt_dec(gap * 100, 1)} pp. A vantagem do backtest completo "
+        f"vem de tirar do topo os deals parados."
+    )
+    qend = [c for c in cuts if int(c["cut"][5:7]) % 3 == 0]
+    diffs = _list_pt([f"{fmt_pp(c['foque_por_idade']['diferenca_ultima_menos_primeira_90d']['diff'])} em {_short_date(c['cut'])}" for c in qend])
+    hoje = bt["hoje"]["foque_por_idade"]
+    total = bt["hoje"]["categorias"]["Foque"]["n"]
+    old = hoje[-1]["n"]
+    lines.append(
+        f"- **O Foque de hoje está otimista:** {fmt_int(old)} dos {fmt_int(total)} deals têm 61 dias ou mais, e nos fins de trimestre "
+        f"testados esses deals ganharam menos que os de até 30 dias ({diffs}). O modelo não corrige isso."
+    )
+    return "\n".join(lines)
+
+
+# =============================================================================================
 # Conferência dos números da prosa
 # =============================================================================================
 _NUM = r"\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?"  # número PT-BR: 1.291 | 3,2 | 1.234,5 | 138
