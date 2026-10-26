@@ -41,6 +41,19 @@ ATTRIBUTE_L2 = 1.0  # penalidade L2 nos coeficientes do atributo (teste de atrib
 FOQUE_AGE_BANDS = ((0, 30), (31, 60), (61, None))  # faixas de idade para o achado "Foque 61+ dias"
 CATEGORIES = ("Foque", "Reative", "Limpe", "Qualifique")  # as 4 listas de ação, na ordem de exibição
 
+# --- Curva v2 (correção após revisão do Rafael; ver docs/SCORING.md e process-log/07_correcao-curva.md) ---
+# Mudança pós-backtest: a curva v1 ("platô + queda") dava a mesma chance de 0 a ~95 dias. A v2 é monotônica
+# desde o dia 0 (faixas de idade isotônicas) e treina só com fotos da mesma fase do trimestre do corte.
+V2_PSEUDO_COUNT = 0  # sem pseudo-contagem: a do ajuste único (20) empurrava a cauda sem ganhos para 7% a 27%
+FOQUE_HALF_FRACTION = 0.5  # Foque: idade até onde a chance ainda é pelo menos metade da chance de um deal novo
+LIMPE_MIN_CHANCE = 0.02  # Limpe: chance abaixo de 2% (ou idade acima do maior ciclo já ganho até o corte)
+AGE_SCAN_MAX_DAYS = 730  # varredura de idades para achar os limiares da curva (a curva é constante depois da última faixa)
+QUARTER_END_PHASE = 3  # 3º mês do trimestre (mar, jun, set, dez): fotos "de fim de trimestre"
+EXPLAIN_CURVE_AGES = (30, 60, 90)  # idades citadas na linha 2 de "Como funciona o score"
+CURVE_TABLE_AGES = (0, 15, 30, 45, 60, 75, 90, 105, 120, 150)  # idades da tabela da curva no SCORING
+DIAGNOSTIC_AGE_BANDS = ((0, 30), (31, 60), (61, 90), (91, 105), (106, 120))  # faixas do diagnóstico por fase
+INTRA_FOQUE_MAX_AGE = 90  # população da métrica de ordem dentro do Foque: Engaging abertos em T com idade <= 90 dias
+
 # --- Recalibração (MODEL_CARD, bloco 5) -----------------------------------------------------
 RECALIBRATION_SHIFT_PP = 10  # X: alerta quando a taxa de ganho em 90 dias de uma faixa de idade se afasta da chance do modelo em mais de X pp
 RECALIBRATION_MIN_BAND_N = 100  # faixas com menos deals que isso não disparam o alerta (ruído de amostra)

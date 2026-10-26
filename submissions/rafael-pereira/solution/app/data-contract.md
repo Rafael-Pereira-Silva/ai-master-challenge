@@ -58,10 +58,10 @@ Uma "foto" da carteira numa data. **Ordem da lista:** primeiro o snapshot `"hoje
 | `date` | string ISO | não | Data da foto. Para `"hoje"` é igual a `meta.reference_date`. Também é a chave do hash (`#modo=2017-09-30`) e casa com `backtest.rows[].cut`. |
 | `mode` | `"hoje"` \| `"teste"` | não | `"teste"` = reconstruído no passado, com desfecho real em `deals[].outcome`. |
 | `label` | string | não | Texto do seletor de modo: `"Hoje — 31/12/2017"`, `"Teste: 30/09/2017"`. |
-| `model` | objeto | não | Parâmetros do modelo **ajustado só com dados até `date`**: `knot_days` (int, dias até a chance começar a cair), `p_fresh` (fração, chance de um deal novo), `halving_days` (int/float, dias depois do joelho até a chance cair à metade), `limpe_after_days` (int, maior ciclo já ganho: depois disso o deal é Limpe). Usados nas linhas-instrução das abas. |
+| `model` | objeto | não | Parâmetros do modelo **ajustado só com dados até `date`** (curva v2, correção após revisão do Rafael): `knot_days` (int, último dia do Foque: a chance ainda é pelo menos metade da de um deal novo), `p_fresh` (fração, chance de um deal novo), `limpe_after_days` (int, último dia do Reative: depois disso o deal é Limpe), `limpe_rule` (`"chance"` se o Limpe começa porque a chance cai abaixo de `limpe_min_chance`, `"ciclo"` se pelo maior ciclo ganho), `limpe_min_chance` (fração, 0,02), `max_won_cycle_days` (int, maior ciclo já ganho até `date`). Chaves extras de diagnóstico: `version`, `phase`, `halving_days` e `slope_per_30d` (só na v1, nulos na v2), `base_rate`, `train_rows`, `train_snapshots`, `as_of_date`. Usados nas linhas-instrução das abas. |
 | `how_it_works` | lista de **5** strings | não | As 5 linhas do `<details>` "Como funciona o score", já com números (vêm de `explain.how_it_works`). Exatamente 5. |
 | `summary` | objeto | não | Para as 4 chaves `Foque`, `Reative`, `Limpe`, `Qualifique`: `{n:int, valor_tabela:number, valor_esperado:number\|null}`. `valor_tabela` = soma de `price`; `valor_esperado` = soma de `ev` (`null` em Qualifique). **Em snapshot de teste, `Qualifique` = `{n:0, valor_tabela:0, valor_esperado:null}`.** |
-| `outcome_summary` | objeto | **só em `mode="teste"`** (omitir em `"hoje"`) | Para `Foque`, `Reative` e `Limpe` (sem Qualifique): `{n:int, pct_ganhos:fração, receita_ganha:number}`. `pct_ganhos` = ganhos até `meta.reference_date` ÷ `n` (quem ainda está aberto conta como não ganho); `receita_ganha` = soma de `close_value` dos ganhos. É o resumo do snapshot inteiro e **não muda com os filtros** (de propósito: sem taxa de vitória por vendedor). |
+| `outcome_summary` | objeto | **só em `mode="teste"`** (omitir em `"hoje"`) | Para `Foque`, `Reative` e `Limpe` (sem Qualifique): `{n:int, pct_ganhos:fração, receita_ganha:number}`. `pct_ganhos` = ganhos até `meta.reference_date` ÷ `n` (quem ainda está aberto conta como não ganho); `receita_ganha` = soma de `close_value` dos ganhos. É o resumo do snapshot inteiro, **sem filtros**. A interface não o exibe direto: recalcula `n`, ganhos e receita a partir de `deals` filtrados (com um vendedor escolhido, só contagens, sem porcentagem: sem taxa de vitória por vendedor) e a checagem Playwright confere que, sem filtro, o recálculo é igual a este resumo. |
 | `deals` | lista | não | Ver seção 6. **Já vem na ordem de exibição; a interface não reordena** (só filtra, preservando a ordem). |
 
 Invariantes (o `build.py` deve garantir com `assert`):
@@ -75,7 +75,7 @@ Invariantes (o `build.py` deve garantir com `assert`):
 
 Os deals vêm agrupados por categoria na ordem `Foque`, `Reative`, `Limpe`, `Qualifique`, e **dentro de cada categoria** já na ordem final:
 
-- Foque e Reative: valor esperado decrescente → menos dias até o próximo limiar (`days_to_knot` no Foque, `days_to_limpe` no Reative) → `id`.
+- Foque e Reative: valor esperado decrescente (na v2 a chance cai com a idade, então a ordem não é só o preço) → menos dias até o próximo limiar (`days_to_knot` no Foque, `days_to_limpe` no Reative) → `id`.
 - Limpe: `price` decrescente → `age` decrescente.
 - Qualifique: `price` decrescente.
 
@@ -99,7 +99,7 @@ Como a interface filtra sem reordenar, a lista filtrada de um vendedor/manager/r
 | `score` | int 0–100 | **sim** | Score. `null` em Qualifique (a interface mostra "Sem score"). |
 | `cat` | string | não | `"Foque"` \| `"Reative"` \| `"Limpe"` \| `"Qualifique"`. |
 | `why` | lista de 2 a 4 strings | não | Frases curtas em PT-BR, sem jargão, na ordem em que devem ser lidas. **A 1ª frase aparece sozinha no card** (então precisa fazer sentido sozinha); todas aparecem ao expandir. Se `account` for `null`, uma das frases avisa "Conta não informada no CRM…". |
-| `days_to_knot` | int | **sim** | Só em Foque: dias até a chance começar a cair (`knot_days - age`, >= 0). `null` nas outras. |
+| `days_to_knot` | int | **sim** | Só em Foque: dias até o fim do Foque (`knot_days - age`, >= 0). `null` nas outras. |
 | `days_to_limpe` | int | **sim** | Em Foque e Reative: dias até virar Limpe (`limpe_after_days - age`, >= 0). `null` em Limpe e Qualifique. |
 | `outcome` | objeto \| `null` | **sim** | `null` no snapshot `"hoje"`. No de teste: `{status, close_date, close_value}` com `status` = `"Ganho"` (`close_date` e `close_value` preenchidos), `"Perdido"` (`close_date` preenchida, `close_value` pode ser `null` ou `0`), `"Aberto"` (ainda aberto em `meta.reference_date`; `close_date` e `close_value` = `null`). Só entram fechamentos até `meta.reference_date`. |
 
@@ -119,19 +119,19 @@ Como a interface filtra sem reordenar, a lista filtrada de um vendedor/manager/r
 |---|---|---|---|
 | `cut` | string | não | Data ISO do corte (`"2017-06-30"`) ou `"media"` para a média dos cortes. A interface agrupa por `cut` na ordem em que aparece e destaca o corte do snapshot ativo (`cut` = `snapshot.date`). |
 | `cut_label` | string | não | `"30/06/2017"` ou `"Média dos 4 cortes"`. |
-| `method` | string | não | Chave: `"score"`, `"valor"`, `"recencia"`, `"aleatorio"`. A interface agrupa as colunas por `method` na ordem em que aparecem no 1º corte. |
-| `method_label` | string | não | `"Score (valor esperado)"`, `"Ordenar por valor"`, `"Mais recentes primeiro"`, `"Aleatório (média de sorteios)"`. |
+| `method` | string | não | Chave: `"score"` (v2), `"score_v1"` (curva antiga, para comparação), `"valor"`, `"recencia"`, `"aleatorio"`. A interface agrupa as colunas por `method` na ordem em que aparecem no 1º corte. |
+| `method_label` | string | não | `"Score v2 (valor esperado, curva por faixas)"`, `"Score v1 (platô, antes da correção)"`, `"Ordenar por valor"`, `"Mais recentes primeiro"`, `"Aleatório (média de sorteios)"`. |
 | `auc` | fração | sim | AUC do método no corte. |
 | `ganhos_top20` | fração | sim | Fração dos ganhos capturada pelo top 20% do método. |
 | `receita_top20` | fração | sim | Fração da receita ganha capturada pelo top 20% (**métrica primária**). |
 
-A interface desenha três tabelas (receita no top 20%, ganhos no top 20%, AUC), cortes nas linhas e métodos nas colunas. Linhas de um mesmo corte devem trazer os mesmos 4 métodos.
+A interface desenha três tabelas (receita no top 20%, ganhos no top 20%, AUC), cortes nas linhas e métodos nas colunas. Linhas de um mesmo corte devem trazer os mesmos 5 métodos.
 
 ## 8. Como a interface usa cada parte (para quem for mudar o build)
 
 - `snapshots[].label` -> seletor de modo; `mode` -> liga a faixa "Modo teste", os selos de desfecho e a indisponibilidade da aba Qualifique.
 - `summary` -> KPIs/abas sem filtro; com filtro, a interface recalcula as contagens e os valores a partir de `deals`.
-- `outcome_summary` -> os três blocos `backtest-summary-<Cat>` (`data-n` e `data-pct`, este em pontos percentuais com uma casa, ex. `"49.3"`).
+- `deals[].outcome` -> os três blocos `backtest-summary-<Cat>`, recalculados com os filtros: `data-n`, `data-won`, `data-revenue` e `data-pct` (pontos percentuais com uma casa, ex. `"49.3"`; ausente quando há vendedor escolhido ou a lista está vazia).
 - `people.agents` -> seletor "Quem é você?" (agrupado por manager), "Carteira do time" e estado vazio.
 - `how_it_works` -> `<details data-testid="how-it-works">`, uma `<li>` por linha.
 - `backtest` -> `<details data-testid="backtest-panel">`.

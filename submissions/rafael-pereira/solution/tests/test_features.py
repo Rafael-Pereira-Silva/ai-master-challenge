@@ -252,3 +252,35 @@ def test_naive_choices_would_leak_and_the_mutation_exposes_them(deals):
     assert naive_limpe(deals) != naive_limpe(mutated)
     assert naive_label(deals) != naive_label(mutated)
     assert score.fit_model(deals, T).limpe_after_days == score.fit_model(mutated, T).limpe_after_days
+
+
+# --- Curva v2: fotos da mesma fase do trimestre -----------------------------------------------------
+
+
+def test_quarter_phase_and_same_phase_filter():
+    assert [features.quarter_phase(d) for d in ("2017-01-31", "2017-02-28", "2017-03-31", "2017-04-30", "2017-12-31")] == [1, 2, 3, 1, 3]
+    train = pd.DataFrame({"snapshot_date": pd.to_datetime(["2017-03-31", "2017-04-30", "2017-06-30", "2017-07-31"]), "y": [1, 0, 1, 0]})
+    assert features.same_phase(train, 3)["y"].tolist() == [1, 1]
+    assert features.same_phase(train, 1)["y"].tolist() == [0, 0]
+    assert features.same_phase(train, 2).empty
+
+
+@pytest.mark.parametrize("T", [pd.Timestamp(c) for c in [*config.BACKTEST_CUTS, config.DEFAULT_REFERENCE_DATE]])
+def test_v2_model_is_the_isotonic_fit_of_the_same_phase_rows_only(deals, T):
+    model = score.fit_model(deals, T)
+    assert model.version == "v2"
+    every = features.training_set(features.as_of(deals, T), T)
+    same = features.same_phase(every, features.quarter_phase(T))
+    assert (same["snapshot_date"] + pd.Timedelta(days=config.HORIZON_DAYS) <= T).all()
+    assert model.curve.binned == score.fit_binned_curve(same["age_days"], same["y"], alpha=0)
+
+
+def test_v2_ignores_the_outcomes_of_photos_from_other_phases(deals):
+    T = pd.Timestamp(config.DEFAULT_REFERENCE_DATE)
+    every = features.training_set(features.as_of(deals, T), T)
+    other = features.quarter_phase_series(every["snapshot_date"]) != features.quarter_phase(T)
+    assert other.any()
+    scrambled = every.copy()
+    scrambled.loc[other, "y"] = 1 - scrambled.loc[other, "y"]
+    scrambled.loc[other, "age_days"] = 0
+    assert score._fit_v2(every, T, score.FitConfig()) == score._fit_v2(scrambled, T, score.FitConfig())

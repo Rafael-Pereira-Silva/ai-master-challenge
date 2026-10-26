@@ -2,41 +2,36 @@
 
 Manager: Celia Rouche · Região: West
 
-**Esta semana: foque em 6 deals, reative 10 antes que esfriem e limpe 34 do CRM (US$ 82.431 parados).**
+**Esta semana: foque em 2 deals, reative 4 antes que esfriem e limpe 44 do CRM (US$ 88.788 parados).**
 
-## 3 para focar
+## 2 para focar
 
-6 deals em Foque; estes são os 3 de maior valor esperado.
-
-1. **Betasoloin** · GTK 500 · US$ 26.768 de tabela · aberto há 95 dias · score 100
-   - GTK 500: US$ 26.768 de tabela, valor esperado US$ 10.677; hoje é o último dia da janela boa.
-   - A chance só começa a cair depois de 95 dias de idade.
-2. **Zoomit** · MG Advanced · US$ 3.393 de tabela · aberto há 81 dias · score 67
-   - MG Advanced: US$ 3.393 de tabela, valor esperado US$ 1.353; janela boa por mais 14 dias.
-   - A chance só começa a cair depois de 95 dias de idade.
-3. **Conta não informada** · GTX Basic · US$ 550 de tabela · aberto há 70 dias · score 39
-   - GTX Basic: US$ 550 de tabela, valor esperado US$ 219; janela boa por mais 25 dias.
-   - A chance só começa a cair depois de 95 dias de idade.
+1. **Conta não informada** · MG Special · US$ 55 de tabela · aberto há 34 dias · score 11
+   - Deals com 34 dias fecharam 49% das vezes; os novos, 50%.
+   - Faltam 27 dias para a chance cair à metade da de um deal novo e o deal sair do Foque.
+2. **Conta não informada** · MG Special · US$ 55 de tabela · aberto há 51 dias · score 9
+   - Deals com 51 dias fecharam 37% das vezes; os novos, 50%.
+   - Faltam 10 dias para a chance cair à metade da de um deal novo e o deal sair do Foque.
 
 ## 3 para reativar
 
-10 deals em Reative; estes são os 3 de maior valor esperado.
+4 deals em Reative; estes são os 3 de maior valor esperado.
 
-1. **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 97 dias · score 71
-   - Aberto há 97 dias: a chance de ganho em 90 dias caiu de 40% (deal novo) para 36%.
-   - Nenhum deal foi ganho depois de 138 dias aberto — faltam 41 dias. Fale com o cliente esta semana.
-2. **Dalttechnology** · GTX Plus Basic · US$ 1.096 de tabela · aberto há 102 dias · score 43
-   - Aberto há 102 dias: a chance de ganho em 90 dias caiu de 40% (deal novo) para 27%.
-   - Nenhum deal foi ganho depois de 138 dias aberto — faltam 36 dias. Fale com o cliente esta semana.
-3. **Conta não informada** · MG Special · US$ 55 de tabela · aberto há 111 dias · score 5
-   - Aberto há 111 dias: a chance de ganho em 90 dias caiu de 40% (deal novo) para 14%.
-   - Nenhum deal foi ganho depois de 138 dias aberto — faltam 27 dias. Fale com o cliente esta semana.
+1. **Betasoloin** · GTK 500 · US$ 26.768 de tabela · aberto há 95 dias · score 50
+   - Deals com 95 dias fecharam 2% das vezes; os novos, 50%.
+   - Hoje é o último dia: depois de 95 dias aberto a chance de ganho cai abaixo de 2%. Fale com o cliente hoje.
+2. **Zoomit** · MG Advanced · US$ 3.393 de tabela · aberto há 81 dias · score 47
+   - Deals com 81 dias fecharam 14% das vezes; os novos, 50%.
+   - Depois de 95 dias aberto a chance de ganho cai abaixo de 2% — faltam 14 dias. Fale com o cliente esta semana.
+3. **Conta não informada** · GTX Basic · US$ 550 de tabela · aberto há 70 dias · score 24
+   - Deals com 70 dias fecharam 17% das vezes; os novos, 50%.
+   - Depois de 95 dias aberto a chance de ganho cai abaixo de 2% — faltam 25 dias. Fale com o cliente esta semana.
 
-## Limpe: 34 deals (US$ 82.431 de tabela)
+## Limpe: 44 deals (US$ 88.788 de tabela)
 
 Os 5 de maior valor:
 
-- **Conta não informada** · GTK 500 · US$ 26.768 de tabela · aberto há 157 dias · score 25
+- **Conta não informada** · GTK 500 · US$ 26.768 de tabela · aberto há 157 dias · score 0
 - **Finhigh** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 289 dias · score 0
 - **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 258 dias · score 0
 - **Vehement Capital Partners** · GTX Pro · US$ 4.821 de tabela · aberto há 204 dias · score 0

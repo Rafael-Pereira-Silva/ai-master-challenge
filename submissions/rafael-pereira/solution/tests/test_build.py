@@ -119,6 +119,30 @@ def test_no_nan_and_the_json_is_plain(data):
     assert isinstance(first["price"], int) and isinstance(first["age"], int) and isinstance(first["score"], int)
 
 
+def test_model_section_carries_the_new_limits_and_the_deals_follow_them(data):
+    for snap in data["snapshots"]:
+        m = snap["model"]
+        assert m["version"] == "v2" and m["limpe_rule"] in ("chance", "ciclo") and m["limpe_min_chance"] == config.LIMPE_MIN_CHANCE
+        assert m["knot_days"] <= m["limpe_after_days"] and m["max_won_cycle_days"] >= m["knot_days"]
+        for d in snap["deals"]:
+            if d["cat"] == "Foque":
+                assert d["age"] <= m["knot_days"] and d["days_to_knot"] == m["knot_days"] - d["age"]
+            elif d["cat"] == "Reative":
+                assert m["knot_days"] < d["age"] <= m["limpe_after_days"]
+            elif d["cat"] == "Limpe":
+                assert d["age"] > m["limpe_after_days"]
+        foque = [d["p"] for d in snap["deals"] if d["cat"] == "Foque"]
+        assert min(foque) >= config.FOQUE_HALF_FRACTION * m["p_fresh"] - 1e-12
+        assert all(d["p"] < config.LIMPE_MIN_CHANCE for d in snap["deals"] if d["cat"] == "Limpe" and d["age"] <= m["max_won_cycle_days"])
+
+
+def test_every_scored_card_opens_with_the_comparison_sentence(data):
+    for snap in data["snapshots"]:
+        for d in snap["deals"]:
+            if d["cat"] != "Qualifique":
+                assert re.fullmatch(r"Deals com [\d.]+ dias? fecharam .+ das vezes(; os novos, \d+%|, o mesmo que os novos)\.", d["why"][0]), d["why"][0]
+
+
 def test_the_model_of_each_snapshot_only_knows_its_own_date(data):
     for snap in data["snapshots"]:
         assert snap["model"]["as_of_date"] == snap["date"]
@@ -132,25 +156,31 @@ def test_backtest_section_rows_and_texts(data, metrics):
     assert [m["key"] for m in section["metrics"]] == ["receita_top20", "ganhos_top20", "auc"]
     assert "20%" in section["metrics"][0]["label"] and "métrica principal" in section["metrics"][0]["label"]
     cuts = [r["cut"] for r in section["rows"]]
-    assert cuts == [c for cut in config.BACKTEST_CUTS + ["media"] for c in [cut] * 4]
+    assert cuts == [c for cut in config.BACKTEST_CUTS + ["media"] for c in [cut] * 5]
     assert {r["method"] for r in section["rows"]} == set(build.ROW_METHODS)
     assert "p_only" not in {r["method"] for r in section["rows"]}
     assert section["rows"][-1]["cut_label"] == "Média dos 4 cortes"
     assert section["headline"] == build.headline_text(metrics["headline"])
     assert section["criterion_text"].startswith("Critério fixado antes do código: ")
-    assert section["criterion_text"].endswith("Resultado: PASSOU.") == metrics["criterion"]["passed"]
+    assert ("Resultado (curva v2): PASSOU." in section["criterion_text"]) == metrics["criterion"]["passed"]
+    assert "mudança pós-backtest, pedida pelo Rafael depois de revisar a ferramenta" in section["criterion_text"]
     notes = " ".join(section["notes"])
     assert "A recência (mais recentes primeiro) tem AUC maior que o score" in notes
     assert "já resolvidos" in notes and "zumbis" in notes
-    assert "No Foque, deals com 61 dias ou mais" in notes and "otimista" in notes
+    assert "a ordem dentro do Foque" in notes and "score v2" in notes and "otimista" not in notes
+    assert "No Foque, " not in notes  # o aviso "Atenção" do Foque saiu: a correção está na curva
 
 
 def test_backtest_rows_carry_the_metrics_json_values(data, metrics):
     rows = {(r["cut"], r["method"]): r for r in data["backtest"]["rows"]}
     for cut in metrics["cuts"]:
-        for method in build.ROW_METHODS:
+        for method in ("score", *build.BASELINE_METHODS):
             assert rows[(cut["cut"], method)]["receita_top20"] == cut["metodos"][method]["receita_top20"]
     assert rows[("media", "score")]["auc"] == metrics["media_cortes"]["metodos"]["score"]["auc"]
+    for cut, old in zip(metrics["cuts"], metrics["cuts_v1"]):  # a curva antiga aparece ao lado, com os mesmos baselines
+        assert rows[(cut["cut"], "score_v1")]["receita_top20"] == old["metodos"]["score"]["receita_top20"]
+    assert rows[("media", "score_v1")]["receita_top20"] == metrics["media_cortes_v1"]["metodos"]["score"]["receita_top20"]
+    assert rows[("media", "score_v1")]["method_label"].startswith("Score v1")
 
 
 def test_headline_feeds_line_5_of_how_it_works(data, metrics):
@@ -163,7 +193,7 @@ def test_failed_criterion_is_reported_as_such(metrics):
     failed = copy.deepcopy(metrics)
     failed["criterion"].update(passed=False, adjustment_applied=True)
     text = build.criterion_text(failed)
-    assert "Resultado: FALHOU." in text and "ajuste único" in text
+    assert "Resultado (curva v2): FALHOU." in text and "ajuste único" in text
     failed.pop("criterion")
     assert build.criterion_text(failed) is None
 
@@ -232,6 +262,7 @@ def test_snapshot_csvs_match_the_snapshots(tmp_path, data):
 
 
 def test_one_brief_per_agent_with_open_deals_and_an_index(tmp_path, data):
+    data_today = data["snapshots"][0]["deals"]
     names = build.write_briefs(tmp_path, data)
     agents = data["people"]["agents"]
     with_deals = [a for a in agents if a["n_open"] > 0]
@@ -243,7 +274,11 @@ def test_one_brief_per_agent_with_open_deals_and_an_index(tmp_path, data):
     assert "Sem nenhum deal no CRM** (5)" in index and "Só com deals fechados** (3)" in index
     zane = (tmp_path / "zane-levy.md").read_text(encoding="utf-8")
     assert zane.startswith("# Brief de segunda-feira — Zane Levy — 31/12/2017")
-    assert "## 3 para focar" in zane and "## 3 para reativar" in zane and "## Limpe:" in zane
+    zane_deals = [d for d in data_today if d["agent"] == "Zane Levy"]
+    for cat, noun in (("Foque", "focar"), ("Reative", "reativar")):
+        n = sum(d["cat"] == cat for d in zane_deals)
+        assert (f"## {min(n, build.BRIEF_TOP[cat])} para {noun}" in zane) if n else (f"Nenhum deal em {cat}" in zane)
+    assert "## Limpe:" in zane
     assert "nan" not in zane.lower().split()
 
 

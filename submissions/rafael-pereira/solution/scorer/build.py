@@ -31,7 +31,8 @@ from . import clean, config, docs, explain, fmt, score, validate
 TODAY, TEST = "hoje", "teste"
 CATS = config.CATEGORIES
 SCORED_CATS = CATS[:3]  # Foque, Reative, Limpe: as listas que têm score e desfecho no modo teste
-ROW_METHODS = ("score", "valor", "recencia", "aleatorio")  # métodos de `backtest.rows[].method`, na ordem de exibição
+ROW_METHODS = ("score", "score_v1", "valor", "recencia", "aleatorio")  # métodos de `backtest.rows[].method`, na ordem de exibição
+BASELINE_METHODS = ("valor", "recencia", "aleatorio")  # os que o critério pré-registrado compara com o score
 AUC_RANDOM = 0.5  # AUC de um sorteio (só para o rótulo da tabela)
 MAX_DATA_JS_BYTES = 4 * 1024 * 1024  # meta do contrato
 BRIEF_TOP = {"Foque": 3, "Reative": 3, "Limpe": 5, "Qualifique": 3}  # quantos deals cada lista mostra no brief
@@ -122,14 +123,23 @@ def last_event_date(deals: pd.DataFrame) -> pd.Timestamp:
 # Snapshot: uma foto da carteira numa data
 # =============================================================================================
 def model_section(model: score.ScoreModel) -> dict:
-    """Parâmetros do modelo do corte (os quatro primeiros são o contrato; o resto é diagnóstico)."""
+    """Parâmetros do modelo do corte (os primeiros são o contrato; o resto é diagnóstico).
+
+    `knot_days` é o último dia do Foque (a chance ainda é pelo menos metade da de um deal novo); `limpe_after_days`, o
+    último dia do Reative; `limpe_rule` diz se o Limpe começa pela chance mínima ("chance") ou pelo maior ciclo ganho ("ciclo").
+    """
     curve = model.curve
     return {
+        "version": model.version,
         "knot_days": model.knot_days,
         "p_fresh": model.p_fresh,
-        "halving_days": curve.halving_days,
         "limpe_after_days": model.limpe_after_days,
-        "slope_per_30d": curve.slope_per_30d,
+        "limpe_rule": model.limpe_rule,
+        "limpe_min_chance": config.LIMPE_MIN_CHANCE,
+        "max_won_cycle_days": model.max_won_cycle_days,
+        "halving_days": curve.halving_days,
+        "slope_per_30d": getattr(curve, "slope_per_30d", None),
+        "phase": getattr(curve, "phase", None),
         "base_rate": curve.base_rate,
         "train_rows": curve.train_rows,
         "train_snapshots": list(curve.train_snapshots),
@@ -301,10 +311,17 @@ def metric_definitions() -> list[dict]:
 
 
 def _cut_blocks(metrics: dict) -> list[tuple[str, str, dict]]:
-    """(chave do corte, rótulo, métricas por método), os cortes em ordem e a média por último."""
-    blocks = [(c["cut"], fmt.fmt_date(c["cut"]), c["metodos"]) for c in metrics["cuts"]]
+    """(chave do corte, rótulo, métricas por método), os cortes em ordem e a média por último.
+
+    O método `score_v1` (curva antiga, mesmos deals e mesmos baselines) vem de `cuts_v1`.
+    """
+    blocks = [
+        (c["cut"], fmt.fmt_date(c["cut"]), {**c["metodos"], "score_v1": old["metodos"]["score"]})
+        for c, old in zip(metrics["cuts"], metrics["cuts_v1"])
+    ]
     n = len(metrics["cuts"])
-    blocks.append(("media", f"Média dos {fmt.fmt_int(n)} cortes", metrics["media_cortes"]["metodos"]))
+    mean = {**metrics["media_cortes"]["metodos"], "score_v1": metrics["media_cortes_v1"]["metodos"]["score"]}
+    blocks.append(("media", f"Média dos {fmt.fmt_int(n)} cortes", mean))
     return blocks
 
 
@@ -345,7 +362,14 @@ def criterion_text(metrics: dict) -> str | None:
         return None
     verdict = "PASSOU" if criterion["passed"] else "FALHOU"
     adjusted = " Foi aplicado o ajuste único pré-definido." if criterion.get("adjustment_applied") else ""
-    return f"Critério fixado antes do código: {criterion['rule']} Resultado: {verdict}.{adjusted}"
+    change = ""
+    if criterion.get("post_backtest_change"):
+        old = "PASSOU" if criterion.get("v1_passed") else "FALHOU"
+        change = (
+            f" A curva v2 é uma mudança pós-backtest, pedida pelo Rafael depois de revisar a ferramenta (a v1 também {old}); "
+            "o critério foi mantido e reportado para as duas."
+        )
+    return f"Critério fixado antes do código: {criterion['rule']} Resultado (curva v2): {verdict}.{adjusted}{change}"
 
 
 def _note_recency_auc(cuts: list[dict], label: dict) -> str | None:
@@ -360,7 +384,7 @@ def _note_recency_auc(cuts: list[dict], label: dict) -> str | None:
 
 
 def _note_margin_and_recency_low(cuts: list[dict], label: dict) -> list[str]:
-    others = [m for m in ROW_METHODS if m != "score"]
+    others = list(BASELINE_METHODS)
     margins = [
         (c["metodos"]["score"]["receita_top20"] - max(c["metodos"][m]["receita_top20"] for m in others), c["cut"])
         for c in cuts
@@ -393,25 +417,20 @@ def _note_resolved(cuts: list[dict], reference_date) -> str:
     )
 
 
-def _note_foque_age(metrics: dict, cuts: list[dict], label: dict) -> str | None:
-    """No Foque, a chance real cai com a idade em alguns cortes, mas o modelo dá a mesma chance a todos."""
-    worse = [c for c in cuts if c["foque_por_idade"]["diferenca_ultima_menos_primeira_90d"]["ci_high"] < 0]
-    if not worse:
+def _note_intra_foque(metrics: dict, label: dict) -> str | None:
+    """Ordem dentro do Foque: o score v2 contra o v1, o valor e a recência (mesma população para todos)."""
+    intra = metrics.get("intra_foque")
+    if not intra:
         return None
-    bands = worse[0]["foque_por_idade"]["faixas"]
-    first, last = bands[0]["faixa"], bands[-1]["faixa"]
-    detail = ", ".join(
-        f"{label[c['cut']]} ({fmt.fmt_pp(c['foque_por_idade']['diferenca_ultima_menos_primeira_90d']['diff'])})"
-        for c in worse
-    )
-    quarter_end = all(pd.Timestamp(c["cut"]).month % 3 == 0 for c in worse)
-    where = "nos cortes de fim de trimestre" if quarter_end else "em alguns cortes"
-    today = metrics["hoje"]["foque_por_idade"]
-    old, total = today[-1]["n"], sum(b["n"] for b in today)
+    media = intra["media"]
+    best = max(intra["por_corte"], key=lambda c: c["metodos"]["score_v2"]["receita_top20"] - c["metodos"]["score_v1"]["receita_top20"])
+    gap = best["metodos"]["score_v2"]["receita_top20"] - best["metodos"]["score_v1"]["receita_top20"]
     return (
-        f"No Foque, deals com {last} ganharam menos em {config.HORIZON_DAYS} dias do que os de {first} {where}: "
-        f"{detail}. A chance mostrada é a mesma para todo o Foque, então para os mais velhos ela é otimista. "
-        f"Hoje, {fmt.fmt_int(old)} dos {fmt.fmt_int(total)} deals do Foque estão nessa faixa."
+        f"Só entre os deals com até {fmt.fmt_int(intra['idade_max'])} dias (a ordem dentro do Foque), o top {fmt.fmt_pct(config.TOP_FRAC, 0)} do "
+        f"score v2 capturou em média {fmt.fmt_pct(media['score_v2']['receita_top20'], 0)} da receita ganha depois, contra "
+        f"{fmt.fmt_pct(media['score_v1']['receita_top20'], 0)} do v1 e {fmt.fmt_pct(media['valor']['receita_top20'], 0)} ordenando por valor; "
+        f"a AUC é {fmt.fmt_dec(media['score_v2']['auc'], 2)}, perto de um sorteio. A diferença para o v1 está concentrada no corte de "
+        f"{label[best['cut']]} ({fmt.fmt_pp(gap)}); nos outros cortes os dois ordenam quase igual."
     )
 
 
@@ -423,7 +442,7 @@ def backtest_notes(metrics: dict, reference_date) -> list[str]:
         _note_recency_auc(cuts, label),
         *_note_margin_and_recency_low(cuts, label),
         _note_resolved(cuts, reference_date),
-        _note_foque_age(metrics, cuts, label),
+        _note_intra_foque(metrics, label),
         f"Deals ainda abertos em {fmt.fmt_date(reference_date)} contam como não ganhos: o desfecho vai só até essa data.",
     ]
     return [n for n in notes if n]

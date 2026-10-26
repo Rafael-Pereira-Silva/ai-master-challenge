@@ -71,7 +71,8 @@ def test_executive_summary_opens_with_the_finding_and_closes_with_the_recommenda
     summary = section(text, "## Executive Summary").strip()
     assert summary.startswith("O que separa os deals")
     assert "frescor" in summary.split(".")[0]
-    assert "US$ 3,2 mi" in summary
+    assert "US$ 3,6 mi" in summary  # a lista Limpe de hoje, com a curva v2 (antes da correção: US$ 3,2 mi)
+    assert "depois do backtest" in summary  # a troca de curva é declarada no resumo
     assert summary.rstrip().split(". ")[-1].startswith("Recomendo")
 
 

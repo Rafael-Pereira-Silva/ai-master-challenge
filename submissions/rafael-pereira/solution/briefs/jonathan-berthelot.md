@@ -16,11 +16,11 @@ Nenhum deal em Reative esta semana.
 
 Os 5 de maior valor:
 
-- **Inity** · GTX Pro · US$ 4.821 de tabela · aberto há 165 dias · score 5
-- **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 164 dias · score 5
-- **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 156 dias · score 9
-- **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 139 dias · score 23
-- **Gekko & Co** · GTX Plus Basic · US$ 1.096 de tabela · aberto há 164 dias · score 1
+- **Inity** · GTX Pro · US$ 4.821 de tabela · aberto há 165 dias · score 0
+- **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 164 dias · score 0
+- **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 156 dias · score 0
+- **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 139 dias · score 0
+- **Gekko & Co** · GTX Plus Basic · US$ 1.096 de tabela · aberto há 164 dias · score 0
 
 ## Qualifique: 48 deals (US$ 87.716 de tabela)
 

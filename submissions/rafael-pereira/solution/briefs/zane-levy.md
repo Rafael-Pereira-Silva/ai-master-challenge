@@ -2,45 +2,43 @@
 
 Manager: Summer Sewald · Região: West
 
-**Esta semana: foque em 10 deals, reative 21 antes que esfriem e limpe 57 do CRM (US$ 127.517 parados).**
+**Esta semana: foque em 7 deals, reative 3 antes que esfriem e limpe 78 do CRM (US$ 178.048 parados).**
 
 ## 3 para focar
 
-10 deals em Foque; estes são os 3 de maior valor esperado.
+7 deals em Foque; estes são os 3 de maior valor esperado.
 
 1. **The New York Inquirer** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 21 dias · score 75
-   - GTX Plus Pro: US$ 5.482 de tabela, valor esperado US$ 2.187; janela boa por mais 74 dias.
-   - A chance só começa a cair depois de 95 dias de idade.
-2. **Gogozoom** · GTX Pro · US$ 4.821 de tabela · aberto há 66 dias · score 72
-   - GTX Pro: US$ 4.821 de tabela, valor esperado US$ 1.923; janela boa por mais 29 dias.
-   - A chance só começa a cair depois de 95 dias de idade.
+   - Deals com 21 dias fecharam 50% das vezes, o mesmo que os novos.
+   - Faltam 40 dias para a chance cair à metade da de um deal novo e o deal sair do Foque.
+2. **Conta não informada** · GTX Plus Basic · US$ 1.096 de tabela · aberto há 24 dias · score 49
+   - Deals com 24 dias fecharam 49% das vezes; os novos, 50%.
+   - Faltam 37 dias para a chance cair à metade da de um deal novo e o deal sair do Foque.
 3. **Conta não informada** · GTX Plus Basic · US$ 1.096 de tabela · aberto há 33 dias · score 49
-   - GTX Plus Basic: US$ 1.096 de tabela, valor esperado US$ 437; janela boa por mais 62 dias.
-   - A chance só começa a cair depois de 95 dias de idade.
+   - Deals com 33 dias fecharam 49% das vezes; os novos, 50%.
+   - Faltam 28 dias para a chance cair à metade da de um deal novo e o deal sair do Foque.
 
 ## 3 para reativar
 
-21 deals em Reative; estes são os 3 de maior valor esperado.
+1. **Gogozoom** · GTX Pro · US$ 4.821 de tabela · aberto há 66 dias · score 58
+   - Deals com 66 dias fecharam 20% das vezes; os novos, 50%.
+   - Depois de 95 dias aberto a chance de ganho cai abaixo de 2% — faltam 29 dias. Fale com o cliente esta semana.
+2. **Silis** · GTX Basic · US$ 550 de tabela · aberto há 81 dias · score 21
+   - Deals com 81 dias fecharam 14% das vezes; os novos, 50%.
+   - Depois de 95 dias aberto a chance de ganho cai abaixo de 2% — faltam 14 dias. Fale com o cliente esta semana.
+3. **Conta não informada** · MG Special · US$ 55 de tabela · aberto há 84 dias · score 3
+   - Deals com 84 dias fecharam 12% das vezes; os novos, 50%.
+   - Depois de 95 dias aberto a chance de ganho cai abaixo de 2% — faltam 11 dias. Fale com o cliente esta semana.
 
-1. **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 102 dias · score 66
-   - Aberto há 102 dias: a chance de ganho em 90 dias caiu de 40% (deal novo) para 27%.
-   - Nenhum deal foi ganho depois de 138 dias aberto — faltam 36 dias. Fale com o cliente esta semana.
-2. **Initech** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 104 dias · score 66
-   - Aberto há 104 dias: a chance de ganho em 90 dias caiu de 40% (deal novo) para 23%.
-   - Nenhum deal foi ganho depois de 138 dias aberto — faltam 34 dias. Fale com o cliente esta semana.
-3. **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 112 dias · score 55
-   - Aberto há 112 dias: a chance de ganho em 90 dias caiu de 40% (deal novo) para 13%.
-   - Nenhum deal foi ganho depois de 138 dias aberto — faltam 26 dias. Fale com o cliente esta semana.
-
-## Limpe: 57 deals (US$ 127.517 de tabela)
+## Limpe: 78 deals (US$ 178.048 de tabela)
 
 Os 5 de maior valor:
 
 - **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 282 dias · score 0
 - **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 243 dias · score 0
+- **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 120 dias · score 0
+- **Initech** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 104 dias · score 0
 - **Opentech** · GTX Pro · US$ 4.821 de tabela · aberto há 374 dias · score 0
-- **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 336 dias · score 0
-- **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 305 dias · score 0
 
 ## Qualifique
 

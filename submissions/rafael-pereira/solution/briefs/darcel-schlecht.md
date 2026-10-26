@@ -16,11 +16,11 @@ Nenhum deal em Reative esta semana.
 
 Os 5 de maior valor:
 
-- **Isdom** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 165 dias · score 5
-- **Inity** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 158 dias · score 9
-- **Scottech** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 154 dias · score 11
-- **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 148 dias · score 16
-- **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 148 dias · score 16
+- **Isdom** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 165 dias · score 0
+- **Inity** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 158 dias · score 0
+- **Scottech** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 154 dias · score 0
+- **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 148 dias · score 0
+- **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 148 dias · score 0
 
 ## Qualifique: 111 deals (US$ 382.274 de tabela)
 

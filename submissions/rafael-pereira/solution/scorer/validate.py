@@ -4,9 +4,12 @@ Duas camadas no mesmo módulo:
 
 1. Primitivas de métrica (funções puras, numpy/scipy; bloco 3a.2): AUC, captura no top 20%, baseline
    aleatório, bootstrap das diferenças, Brier, log-loss e `beats` (o helper do critério pré-registrado).
-2. Backtest (bloco 3b): `evaluate_cut`, `check_criterion`, o ajuste único pré-definido (curva em faixas
-   de 15 dias com PAVA), o teste de atributos, as auditorias e `run_backtest`, que grava
-   `data/processed/backtest_metrics.json` e `backtest_tables.md`.
+2. Backtest (bloco 3b): `evaluate_cut`, `check_criterion`, o teste de atributos, as auditorias e
+   `run_backtest`, que grava `data/processed/backtest_metrics.json` e `backtest_tables.md`.
+
+Correção após revisão do Rafael (mudança pós-backtest): o produto passou a usar a curva v2 (faixas isotônicas,
+fotos da mesma fase do trimestre). `run_backtest` avalia a v2 e a v1 ("platô") lado a lado nos mesmos cortes e
+acrescenta a métrica de ordem DENTRO do Foque (`intra_foque`) e o diagnóstico por fase do trimestre.
 
 Uso: `python -m scorer.validate` (imprime a tabela principal e PASSOU/FALHOU).
 Tudo é determinístico: sementes fixas, sem `now()`.
@@ -17,7 +20,7 @@ from __future__ import annotations
 import json
 import math
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Callable
 
 import numpy as np
@@ -27,7 +30,10 @@ from scipy.special import expit
 from scipy.stats import rankdata
 
 from . import config, features
-from .score import FitConfig, LogisticFit, age_design, fit_model, score_deals
+from .score import (  # noqa: F401 - BinnedCurve, fit_binned_curve e pava_nonincreasing moraram aqui (testes e docs os usam)
+    CURVE_V1, CURVE_V2, BinnedCurve, FitConfig, LogisticFit, age_design, fit_binned_curve, fit_model,
+    pava_nonincreasing, score_deals,
+)
 
 # Folga numérica para a comparação do critério: 0,61 - 0,60 vale 0,010000000000000009 em ponto
 # flutuante e, sem folga, passaria como "mais de 0,01".
@@ -200,8 +206,9 @@ def beats(score_value: float, others, tie_tol: float = 0.01) -> bool:
 # Backtest (bloco 3b)
 # =============================================================================================
 METHOD_LABELS = {
-    "score": "Score (valor esperado)",
-    "p_only": "Só a chance (diagnóstico)",
+    "score": "Score v2 (valor esperado, curva por faixas)",
+    "score_v1": "Score v1 (platô, antes da correção)",
+    "p_only": "Só a chance v2 (diagnóstico)",
     "valor": "Ordenar por valor",
     "recencia": "Mais recentes primeiro",
     "aleatorio": "Aleatório (média de sorteios)",
@@ -209,6 +216,14 @@ METHOD_LABELS = {
 BASELINES = ("valor", "recencia", "aleatorio")
 METRIC_KEYS = ("auc", "ganhos_top20", "receita_top20")
 PRIMARY_METRIC = "receita_top20"
+INTRA_METHODS = ("score_v2", "score_v1", "valor", "recencia")  # métodos da ordem dentro do Foque, mais o sorteio de referência
+INTRA_LABELS = {
+    "score_v2": "Score v2 (curva por faixas)",
+    "score_v1": "Score v1 (platô)",
+    "valor": "Ordenar por valor",
+    "recencia": "Mais recentes primeiro",
+    "aleatorio": "Aleatório (referência)",
+}
 SIZE_LABELS = ("pequena", "média", "grande")
 CALIBRATION_BANDS = ((0, 30), (31, 60), (61, 90), (91, 120), (121, 150), (151, None))
 RULE_TEXT = (
@@ -245,58 +260,6 @@ def _band_mask(age: np.ndarray, lo, hi) -> np.ndarray:
 
 def _mean_or_none(values) -> float | None:
     return float(np.mean(values)) if len(values) else None
-
-
-# --- curva em faixas (ajuste único pré-definido) -----------------------------------------------
-def pava_nonincreasing(values, weights) -> np.ndarray:
-    """Regressão isotônica não crescente por PAVA (blocos adjacentes que sobem são fundidos pela média ponderada)."""
-    blocks: list[list[float]] = []  # [média, peso, quantos]
-    for value, weight in zip(values, weights):
-        blocks.append([float(value), float(weight), 1])
-        while len(blocks) > 1 and blocks[-2][0] < blocks[-1][0]:
-            m2, w2, c2 = blocks.pop()
-            m1, w1, c1 = blocks.pop()
-            blocks.append([(m1 * w1 + m2 * w2) / (w1 + w2), w1 + w2, c1 + c2])
-    out: list[float] = []
-    for mean, _, count in blocks:
-        out += [mean] * int(count)
-    return np.asarray(out)
-
-
-@dataclass(frozen=True)
-class BinnedCurve:
-    """Chance por idade em faixas, interpolada linearmente entre os pontos médios das faixas."""
-
-    midpoints: tuple[float, ...]
-    rates: tuple[float, ...]  # já suavizada (pseudo-contagem) e não crescente (PAVA)
-    counts: tuple[int, ...]
-    base_rate: float
-
-    def p_win(self, age):
-        age_arr = np.asarray(age, dtype="float64")
-        p = np.interp(age_arr, self.midpoints, self.rates)
-        return float(p) if p.ndim == 0 else p
-
-
-def fit_binned_curve(
-    age, y, width: int = config.ADJUST_BIN_DAYS, alpha: float = config.ADJUST_PSEUDO_COUNT
-) -> BinnedCurve:
-    """Faixas de `width` dias; taxa = (ganhos + alpha*base)/(n + alpha); PAVA com pesos n + alpha.
-
-    Faixas sem nenhum caso são descartadas (a interpolação passa por cima delas).
-    """
-    age = np.asarray(age, dtype="float64")
-    y = np.asarray(y, dtype="float64")
-    base = float(y.mean())
-    idx = (age // width).astype(int)
-    size = int(idx.max()) + 1
-    n = np.bincount(idx, minlength=size)
-    wins = np.bincount(idx, weights=y, minlength=size)
-    keep = n > 0
-    rate = (wins[keep] + alpha * base) / (n[keep] + alpha)
-    iso = pava_nonincreasing(rate, n[keep] + alpha)
-    mids = (np.arange(size) * width + width / 2)[keep]
-    return BinnedCurve(tuple(float(m) for m in mids), tuple(float(r) for r in iso), tuple(int(c) for c in n[keep]), base)
 
 
 # --- logística com penalização seletiva (teste de atributos) -----------------------------------
@@ -359,22 +322,24 @@ def _population(deals: pd.DataFrame, T: pd.Timestamp, model, cfg: FitConfig) -> 
     return pop
 
 
-def _build_cut(deals: pd.DataFrame, T, cfg: FitConfig | None = None, kind: str = "plateau") -> _Cut:
+def _build_cut(deals: pd.DataFrame, T, cfg: FitConfig | None = None, kind: str = "v2") -> _Cut:
+    """Um corte T avaliado com a curva `kind`: "v2" (produto), "plateau" (v1) ou "binned" (o ajuste único pré-registrado,
+    faixas de 15 dias com pseudo-contagem e todas as fotos; as listas continuam as do modelo v1)."""
     cfg = cfg or FitConfig()
     T = pd.Timestamp(T)
-    model = fit_model(deals, T, cfg)
+    if kind not in ("v2", "plateau", "binned"):
+        raise ValueError(f"curva desconhecida: {kind}")
+    model = fit_model(deals, T, replace(cfg, curve=CURVE_V2 if kind == "v2" else CURVE_V1))
     train = features.training_set(features.as_of(deals, T), T, cfg.horizon_days, cfg.first_snapshot)
     pop = _population(deals, T, model, cfg)
     age = pop["age_days"].to_numpy(dtype="float64")
     curve = None
-    if kind == "plateau":
+    if kind in ("v2", "plateau"):
         p_fn = model.curve.p_win
         assert np.allclose(p_fn(age), pop["p_win"].to_numpy(dtype="float64")), "p_win do score_deals difere da curva"
-    elif kind == "binned":
+    else:
         curve = fit_binned_curve(train["age_days"], train["y"])
         p_fn = curve.p_win
-    else:
-        raise ValueError(f"curva desconhecida: {kind}")
     return _Cut(T, cfg, kind, model, p_fn, train, pop, curve)
 
 
@@ -394,21 +359,37 @@ def _random_block(gain, y) -> dict:
 
 
 def _model_dict(model) -> dict:
+    """Parâmetros do modelo de um corte. Chaves comuns às duas curvas; as da v1 (intercepto, inclinação, meia-vida)
+    e as da v2 (fase, pontos da curva, regra do Limpe) só existem na respectiva curva."""
     curve = model.curve
-    return {
+    out = {
         "as_of": model.as_of_date,
         "horizon_days": model.horizon_days,
+        "versao": model.version,
         "knot_days": curve.knot_days,
         "p_fresh": curve.p_fresh,
-        "intercept": curve.intercept,
-        "slope_per_30d": curve.slope_per_30d,
-        "halving_days": curve.halving_days,
         "limpe_after_days": model.limpe_after_days,
+        "max_won_cycle_days": model.max_won_cycle_days,
+        "limpe_rule": model.limpe_rule,
         "train_rows": curve.train_rows,
         "train_snapshots": list(curve.train_snapshots),
         "n_snapshots": len(curve.train_snapshots),
         "base_rate": curve.base_rate,
     }
+    if model.version == CURVE_V1:
+        out.update(intercept=curve.intercept, slope_per_30d=curve.slope_per_30d, halving_days=curve.halving_days)
+    else:
+        out.update(
+            fase=curve.phase,
+            fallback=curve.fallback,
+            p_cauda=float(curve.p_win(config.AGE_SCAN_MAX_DAYS)),
+            curva_pontos=[{"idade": a, "p": float(curve.p_win(a))} for a in config.CURVE_TABLE_AGES],
+            faixas={
+                "pontos_medios": list(curve.binned.midpoints), "taxas": list(curve.binned.rates),
+                "casos": list(curve.binned.counts),
+            },
+        )
+    return out
 
 
 def _prop_diff_ci(a, b, reps: int = config.BOOTSTRAP_REPS, seed: int = 0) -> dict:
@@ -492,14 +473,14 @@ def _resolved(c: _Cut, vecs: dict) -> dict:
         "n_abertos_em_t": int(len(pop)),
         "n_resolvidos": int(res.sum()),
         "n_abertos_em_31_12": int((~res).sum()),
-        "n_abertos_em_31_12_que_ainda_podem_fechar": int((open_age_at_ref <= c.model.limpe_after_days).sum()),
+        "n_abertos_em_31_12_que_ainda_podem_fechar": int((open_age_at_ref <= c.model.max_won_cycle_days).sum()),
         "metodos": {m: _mm(vecs[m][res], y, gain) for m in ("score", "valor", "recencia")},
     }
     out["metodos"]["aleatorio"] = _random_block(gain, y)
     return out
 
 
-def evaluate_cut(deals: pd.DataFrame, T, cfg: FitConfig | None = None, curve_kind: str = "plateau") -> dict:
+def evaluate_cut(deals: pd.DataFrame, T, cfg: FitConfig | None = None, curve_kind: str = "v2") -> dict:
     """Todas as métricas de um corte T (modelo ajustado só com dados até T; desfecho dos dados completos)."""
     return _evaluate(_build_cut(deals, T, cfg, curve_kind))
 
@@ -674,9 +655,10 @@ def run_attribute_tests(deals: pd.DataFrame, cuts: list[_Cut]) -> list[dict]:
 def _audit(deals: pd.DataFrame, cuts: list[_Cut]) -> dict:
     """(i) modelo com o futuro (VAZADO, nunca é resultado); (ii) `has_account` sozinho."""
     ref = config.DEFAULT_REFERENCE_DATE
-    leaked = fit_model(deals, ref)
     vazado, conta = [], []
     for c in cuts:
+        # o modelo vazado vê os dados até 31/12/2017, mas com a mesma fase do trimestre do corte (só o futuro difere)
+        leaked = fit_model(deals, ref, FitConfig(phase=features.quarter_phase(c.T)))
         pop = c.pop
         y, gain = pop["y"].to_numpy(dtype=int), pop["gain"].to_numpy(dtype=float)
         price = pop["sales_price"].to_numpy(dtype=float)
@@ -703,12 +685,11 @@ def _audit(deals: pd.DataFrame, cuts: list[_Cut]) -> dict:
     return {"vazado": vazado, "has_account": conta}
 
 
-def _sensitivity_first_snapshot(deals: pd.DataFrame, main_cuts: list[dict]) -> dict:
-    """Mesmas métricas do score com a primeira foto de treino em 28/02/2017 (sensibilidade, não alternativa)."""
-    cfg = FitConfig(first_snapshot=config.SENSITIVITY_FIRST_SNAPSHOT)
+def _sensitivity(deals: pd.DataFrame, main_cuts: list[dict], cfg: FitConfig) -> dict:
+    """Mesmas métricas do score v2 com outro desenho de ajuste (`cfg`): sensibilidade, não alternativa."""
     rows, as_cuts = [], []
     for main in main_cuts:
-        c = _build_cut(deals, main["cut"], cfg, "plateau")
+        c = _build_cut(deals, main["cut"], cfg, "v2")
         pop = c.pop
         vecs = _vectors(c)
         y, gain = pop["y"].to_numpy(dtype=int), pop["gain"].to_numpy(dtype=float)
@@ -721,16 +702,111 @@ def _sensitivity_first_snapshot(deals: pd.DataFrame, main_cuts: list[dict]) -> d
         as_cuts.append({"cut": main["cut"], "metodos": {**main["metodos"], "score": mm["score"]}})
     crit = check_criterion(as_cuts)
     return {
-        "first_snapshot": config.SENSITIVITY_FIRST_SNAPSHOT, "por_corte": rows,
+        "por_corte": rows,
         "media": {k: float(np.mean([r["score"][k] for r in rows])) for k in METRIC_KEYS},
         "criterio": crit,
     }
 
 
+def _sensitivity_first_snapshot(deals: pd.DataFrame, main_cuts: list[dict]) -> dict:
+    """Primeira foto de treino em 28/02/2017."""
+    out = _sensitivity(deals, main_cuts, FitConfig(first_snapshot=config.SENSITIVITY_FIRST_SNAPSHOT))
+    return {"first_snapshot": config.SENSITIVITY_FIRST_SNAPSHOT, **out}
+
+
+def _sensitivity_pseudo_count(deals: pd.DataFrame, main_cuts: list[dict]) -> dict:
+    """Curva v2 com a pseudo-contagem do ajuste único (20 deals rumo à taxa base em cada faixa)."""
+    out = _sensitivity(deals, main_cuts, FitConfig(pseudo_count=config.ADJUST_PSEUDO_COUNT))
+    return {"pseudo_count": config.ADJUST_PSEUDO_COUNT, **out}
+
+
+# --- ordem dentro do Foque -----------------------------------------------------------------------------------
+def _intra_foque(c_v1: _Cut, c_v2: _Cut) -> dict:
+    """Quem ordena melhor os deals "frescos"? População igual para todos os métodos: os Engaging abertos em T com
+    idade <= `config.INTRA_FOQUE_MAX_AGE` dias (independente da categoria que cada curva atribui)."""
+    ids = c_v2.pop["opportunity_id"].to_numpy()
+    assert (ids == c_v1.pop["opportunity_id"].to_numpy()).all(), "as duas curvas devem pontuar os mesmos deals na mesma ordem"
+    mask = (c_v2.pop["age_days"] <= config.INTRA_FOQUE_MAX_AGE).to_numpy()
+    sub = c_v2.pop.loc[mask]
+    age = sub["age_days"].to_numpy(dtype=float)
+    price = sub["sales_price"].to_numpy(dtype=float)
+    y = sub["y"].to_numpy(dtype=int)
+    gain = sub["gain"].to_numpy(dtype=float)
+    vecs = {
+        "score_v2": c_v2.p_fn(age) * price,
+        "score_v1": c_v1.p_fn(age) * price,
+        "valor": price,
+        "recencia": -age,
+    }
+    metodos = {m: {"auc": auc(v, y), "receita_top20": top_share(v, gain)} for m, v in vecs.items()}
+    rnd = _random_block(gain, y)
+    metodos["aleatorio"] = {"auc": rnd["auc"], "receita_top20": rnd["receita_top20"]}
+    return {
+        "cut": c_v2.T.strftime("%Y-%m-%d"),
+        "n": int(mask.sum()), "ganhos": int(y.sum()), "pct_ganhos": float(y.mean()), "receita_ganha": float(gain.sum()),
+        "metodos": metodos,
+        "bootstrap": {
+            "v2_menos_v1": bootstrap_diff(vecs["score_v2"], vecs["score_v1"], gain),
+            "v2_menos_valor": bootstrap_diff(vecs["score_v2"], vecs["valor"], gain),
+        },
+    }
+
+
+def _intra_foque_section(cuts_v1: list[_Cut], cuts_v2: list[_Cut]) -> dict:
+    per_cut = [_intra_foque(a, b) for a, b in zip(cuts_v1, cuts_v2)]
+    methods = [*INTRA_METHODS, "aleatorio"]
+    media = {m: {k: float(np.mean([c["metodos"][m][k] for c in per_cut])) for k in ("auc", "receita_top20")} for m in methods}
+    return {
+        "regra": "Engaging abertos em T com idade de até {} dias; mesma população para todos os métodos.".format(config.INTRA_FOQUE_MAX_AGE),
+        "idade_max": config.INTRA_FOQUE_MAX_AGE,
+        "labels": INTRA_LABELS,
+        "por_corte": per_cut,
+        "media": media,
+        "v2_vence_v1_em_auc": int(sum(c["metodos"]["score_v2"]["auc"] > c["metodos"]["score_v1"]["auc"] for c in per_cut)),
+        "v2_vence_v1_em_receita": int(sum(c["metodos"]["score_v2"]["receita_top20"] > c["metodos"]["score_v1"]["receita_top20"] for c in per_cut)),
+    }
+
+
+# --- diagnóstico por fase do trimestre ----------------------------------------------------------------------------
+def _band_rates(age: np.ndarray, y: np.ndarray) -> list[dict]:
+    rows = []
+    for lo, hi in config.DIAGNOSTIC_AGE_BANDS:
+        m = _band_mask(age, lo, hi)
+        rows.append({
+            "faixa": _band_label(lo, hi), "idade_min": lo, "idade_max": hi, "n": int(m.sum()),
+            "ganhos": int(y[m].sum()), "taxa_ganho_90d": _mean_or_none(y[m]),
+        })
+    return rows
+
+
+def _diagnostico_fases(deals: pd.DataFrame) -> dict:
+    """Por que a curva v1 ficou plana: taxa de ganho em 90 dias por idade, nas fotos de treino de hoje,
+    separando fotos de fim de trimestre (mar, jun, set) das de meio de trimestre e de cada fase."""
+    T = pd.Timestamp(config.DEFAULT_REFERENCE_DATE)
+    train = features.training_set(features.as_of(deals, T), T)
+    phase = features.quarter_phase_series(train["snapshot_date"])
+    age, y = train["age_days"].to_numpy(dtype=float), train["y"].to_numpy(dtype=float)
+
+    def group(mask: np.ndarray) -> dict:
+        dates = sorted({d.strftime("%Y-%m-%d") for d in train.loc[mask, "snapshot_date"]})
+        return {"fotos": dates, "linhas": int(mask.sum()), "por_faixa": _band_rates(age[mask], y[mask])}
+
+    end = (phase == config.QUARTER_END_PHASE)
+    return {
+        "as_of": config.DEFAULT_REFERENCE_DATE,
+        "grupos": {
+            "fim_de_trimestre": group(end),
+            "meio_de_trimestre": group(~end),
+            "todas": group(np.ones(len(train), dtype=bool)),
+        },
+        "fases": {str(p): group(phase == p) for p in (1, 2, 3)},
+    }
+
+
 # --- hoje -------------------------------------------------------------------------------------------------
-def _hoje(deals: pd.DataFrame) -> dict:
+def _hoje(deals: pd.DataFrame, cfg: FitConfig | None = None) -> dict:
     ref = config.DEFAULT_REFERENCE_DATE
-    model = fit_model(deals, ref)
+    model = fit_model(deals, ref, cfg)
     scored = score_deals(deals, ref, model, include_prospecting=True)
     cats = {}
     for cat in config.CATEGORIES:
@@ -743,10 +819,16 @@ def _hoje(deals: pd.DataFrame) -> dict:
     age = eng["age_days"].to_numpy(dtype=float)
     foque = eng.loc[eng["category"] == "Foque"]
     fage = foque["age_days"].to_numpy(dtype=float)
+    limpe = eng.loc[eng["category"] == "Limpe"]
+    above_cycle = limpe["age_days"].to_numpy(dtype=float) > model.max_won_cycle_days
     return {
         "as_of": ref,
         "modelo": _model_dict(model),
         "categorias": cats,
+        "limpe_detalhe": {
+            "acima_do_maior_ciclo": {"n": int(above_cycle.sum()), "valor_tabela": float(limpe.loc[above_cycle, "sales_price"].sum())},
+            "so_pela_chance": {"n": int((~above_cycle).sum()), "valor_tabela": float(limpe.loc[~above_cycle, "sales_price"].sum())},
+        },
         "faixas_fixas_do_briefing": {
             "ate_90": int((age <= config.BRIEFING_FRESH_DAYS).sum()),
             "de_91_a_138": int(((age > config.BRIEFING_FRESH_DAYS) & (age <= 138)).sum()),
@@ -772,28 +854,28 @@ def headline_metrics(backtest: dict) -> dict:
     return dict(backtest["headline"])
 
 
-def run_backtest(deals: pd.DataFrame | None = None, write: bool = True) -> dict:
-    """Roda o backtest completo na ordem pré-registrada e grava `backtest_metrics.json` e `backtest_tables.md`.
+def _brier_mean(evals: list[dict]) -> dict:
+    return {k: float(np.mean([c["brier"][k] for c in evals])) for k in ("modelo", "constante", "log_loss_modelo", "log_loss_constante")}
 
-    1) curva "platô + queda" nos 4 cortes; 2) critério; 3) só se falhar, o ajuste único (faixas de 15 dias + PAVA)
-    e o critério de novo; 4) se ainda falhar, vale o modelo de melhor média da métrica primária (falha documentada).
+
+def run_backtest(deals: pd.DataFrame | None = None, write: bool = True) -> dict:
+    """Roda o backtest completo e grava `backtest_metrics.json` e `backtest_tables.md`.
+
+    Mudança pós-backtest, pedida pelo Rafael depois de usar a ferramenta como vendedor: o produto usa a curva v2
+    (faixas isotônicas, fotos da mesma fase do trimestre). O critério pré-registrado é reportado para a v2
+    (`criterion`) e para a v1 (`criterion.runs.v1`), nos mesmos cortes e contra os mesmos baselines.
     """
     from . import clean
 
     deals = clean.load_deals() if deals is None else deals
+    cuts2, eval2 = _run_kind(deals, "v2")
     cuts1, eval1 = _run_kind(deals, "plateau")
-    crit1 = check_criterion(eval1)
-    runs = {"plateau": {"passed": crit1["passed"], "per_cut": crit1["per_cut"], "media_receita_top20_score": _mean_metrics(eval1)["score"][PRIMARY_METRIC]}}
-    final_kind, final_eval, adjusted = "plateau", eval1, False
-    if not crit1["passed"]:
-        adjusted = True
-        _, eval2 = _run_kind(deals, "binned")
-        crit2 = check_criterion(eval2)
-        runs["binned"] = {"passed": crit2["passed"], "per_cut": crit2["per_cut"], "media_receita_top20_score": _mean_metrics(eval2)["score"][PRIMARY_METRIC]}
-        if crit2["passed"] or runs["binned"]["media_receita_top20_score"] > runs["plateau"]["media_receita_top20_score"]:
-            final_kind, final_eval = "binned", eval2
-    final = check_criterion(final_eval)
-    media = _mean_metrics(final_eval)
+    crit2, crit1 = check_criterion(eval2), check_criterion(eval1)
+    media2, media1 = _mean_metrics(eval2), _mean_metrics(eval1)
+
+    def run(crit, media):
+        return {"passed": crit["passed"], "per_cut": crit["per_cut"], "media_receita_top20_score": media["score"][PRIMARY_METRIC]}
+
     result = {
         "config": {
             "horizon_days": config.HORIZON_DAYS, "first_snapshot": config.FIRST_SNAPSHOT,
@@ -801,25 +883,33 @@ def run_backtest(deals: pd.DataFrame | None = None, write: bool = True) -> dict:
             "top_frac": config.TOP_FRAC, "random_seeds": config.RANDOM_SEEDS, "bootstrap_reps": config.BOOTSTRAP_REPS,
             "tie_tol": config.CRITERION_TIE_TOL, "attribute_l2": config.ATTRIBUTE_L2,
             "adjust_bin_days": config.ADJUST_BIN_DAYS, "adjust_pseudo_count": config.ADJUST_PSEUDO_COUNT,
+            "v2_pseudo_count": config.V2_PSEUDO_COUNT, "foque_half_fraction": config.FOQUE_HALF_FRACTION,
+            "limpe_min_chance": config.LIMPE_MIN_CHANCE, "intra_foque_max_age": config.INTRA_FOQUE_MAX_AGE,
             "methods": list(METHOD_LABELS), "method_labels": METHOD_LABELS, "primary_metric": PRIMARY_METRIC,
         },
         "criterion": {
             "rule": RULE_TEXT, "metric": PRIMARY_METRIC, "tie_tol": config.CRITERION_TIE_TOL,
-            "passed": final["passed"], "adjustment_applied": adjusted, "final_curve": final_kind,
-            "per_cut": final["per_cut"], "runs": runs,
+            "passed": crit2["passed"], "adjustment_applied": False, "final_curve": CURVE_V2,
+            "post_backtest_change": True, "v1_passed": crit1["passed"],
+            "per_cut": crit2["per_cut"], "runs": {CURVE_V1: run(crit1, media1), CURVE_V2: run(crit2, media2)},
         },
         "headline": {
-            "n_cortes": len(final_eval), "receita_score": media["score"][PRIMARY_METRIC],
-            "receita_valor": media["valor"][PRIMARY_METRIC], "receita_recencia": media["recencia"][PRIMARY_METRIC],
+            "n_cortes": len(eval2), "receita_score": media2["score"][PRIMARY_METRIC],
+            "receita_valor": media2["valor"][PRIMARY_METRIC], "receita_recencia": media2["recencia"][PRIMARY_METRIC],
         },
-        "cuts": final_eval,
-        "media_cortes": {"metodos": media, "brier": {
-            k: float(np.mean([c["brier"][k] for c in final_eval])) for k in ("modelo", "constante", "log_loss_modelo", "log_loss_constante")
-        }},
-        "sensibilidade_2017-02-28": _sensitivity_first_snapshot(deals, final_eval),
-        "auditoria": _audit(deals, cuts1),
-        "atributos": run_attribute_tests(deals, cuts1),
+        "headline_v1": {"n_cortes": len(eval1), "receita_score": media1["score"][PRIMARY_METRIC]},
+        "cuts": eval2,
+        "cuts_v1": eval1,
+        "media_cortes": {"metodos": media2, "brier": _brier_mean(eval2)},
+        "media_cortes_v1": {"metodos": media1, "brier": _brier_mean(eval1)},
+        "intra_foque": _intra_foque_section(cuts1, cuts2),
+        "diagnostico_fases": _diagnostico_fases(deals),
+        "sensibilidade_2017-02-28": _sensitivity_first_snapshot(deals, eval2),
+        "sensibilidade_pseudo_contagem": _sensitivity_pseudo_count(deals, eval2),
+        "auditoria": _audit(deals, cuts2),
+        "atributos": run_attribute_tests(deals, cuts1),  # sobre a curva v1 (joelho fixo): não repetido na v2 (limitação)
         "hoje": _hoje(deals),
+        "hoje_v1": _hoje(deals, FitConfig(curve=CURVE_V1)),
     }
     result = _py(result)
     if write:
@@ -832,9 +922,11 @@ def run_backtest(deals: pd.DataFrame | None = None, write: bool = True) -> dict:
 
 
 TABLE_BLOCKS = (
+    ("Diagnóstico: taxa de ganho por idade e fase do trimestre", "scoring-diagnostico"),
     ("Critério pré-registrado, corte a corte", "scoring-criterio"),
     ("Backtest: corte × método", "scoring-backtest"),
     ("Média dos cortes", "scoring-media"),
+    ("Ordem dentro do Foque", "scoring-foque-ordem"),
     ("Categorias por corte", "scoring-categorias"),
     ("Calibração", "scoring-calibracao"),
     ("Bootstrap", "scoring-bootstrap"),
@@ -842,8 +934,11 @@ TABLE_BLOCKS = (
     ("Sensibilidades", "scoring-sensibilidade"),
     ("Auditoria", "scoring-auditoria"),
     ("Atributos", "scoring-atributos"),
-    ("Modelos por corte", "scoring-modelos"),
+    ("Modelos por corte (v2)", "scoring-modelos"),
+    ("Curva por idade (v2)", "scoring-curva"),
+    ("Modelos por corte (v1)", "scoring-modelos-v1"),
     ("Hoje", "scoring-hoje"),
+    ("Hoje: antes e depois da correção", "scoring-hoje-antes-depois"),
 )
 
 
@@ -864,23 +959,29 @@ def main(argv=None) -> int:
 
     sys.stdout.reconfigure(encoding="utf-8")
     result = run_backtest()
-    print(f"{'corte':<12}{'método':<32}{'AUC':>7}{'ganhos top20':>14}{'receita top20':>15}")
-    for cut in result["cuts"]:
-        for method in ("score", "valor", "recencia", "aleatorio", "p_only"):
-            m = cut["metodos"][method]
+    print(f"{'corte':<12}{'método':<46}{'AUC':>7}{'ganhos top20':>14}{'receita top20':>15}")
+    for cut, cut_v1 in zip(result["cuts"], result["cuts_v1"]):
+        rows = [(m, cut["metodos"][m]) for m in ("score", "valor", "recencia", "aleatorio", "p_only")]
+        rows.insert(1, ("score_v1", cut_v1["metodos"]["score"]))
+        for method, m in rows:
             print(
-                f"{fmt_date(cut['cut']):<12}{METHOD_LABELS[method]:<32}{fmt_dec(m['auc'], 2):>7}"
+                f"{fmt_date(cut['cut']):<12}{METHOD_LABELS[method]:<46}{fmt_dec(m['auc'], 2):>7}"
                 f"{fmt_pct(m['ganhos_top20'], 1):>14}{fmt_pct(m['receita_top20'], 1):>15}"
             )
     print("média dos cortes:")
     for method, m in result["media_cortes"]["metodos"].items():
         print(
-            f"{'':<12}{METHOD_LABELS[method]:<32}{fmt_dec(m['auc'], 2):>7}"
+            f"{'':<12}{METHOD_LABELS[method]:<46}{fmt_dec(m['auc'], 2):>7}"
             f"{fmt_pct(m['ganhos_top20'], 1):>14}{fmt_pct(m['receita_top20'], 1):>15}"
         )
+    m1 = result["media_cortes_v1"]["metodos"]["score"]
+    print(f"{'':<12}{METHOD_LABELS['score_v1']:<46}{fmt_dec(m1['auc'], 2):>7}{fmt_pct(m1['ganhos_top20'], 1):>14}{fmt_pct(m1['receita_top20'], 1):>15}")
+    print("\nordem dentro do Foque (Engaging abertos em T com idade <= {} dias), média dos cortes:".format(config.INTRA_FOQUE_MAX_AGE))
+    for method, m in result["intra_foque"]["media"].items():
+        print(f"{'':<12}{INTRA_LABELS[method]:<46}{fmt_dec(m['auc'], 2):>7}{'':>14}{fmt_pct(m['receita_top20'], 1):>15}")
     crit = result["criterion"]
-    print(f"\ncurva final: {crit['final_curve']}; ajuste aplicado: {'sim' if crit['adjustment_applied'] else 'não'}")
-    print("CRITÉRIO: " + ("PASSOU" if crit["passed"] else "FALHOU"))
+    print(f"\ncurva final: {crit['final_curve']} (mudança pós-backtest); v1: {'PASSOU' if crit['v1_passed'] else 'FALHOU'}")
+    print("CRITÉRIO (v2): " + ("PASSOU" if crit["passed"] else "FALHOU"))
     return 0
 
 

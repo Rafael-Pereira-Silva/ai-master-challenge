@@ -16,11 +16,11 @@ Nenhum deal em Reative esta semana.
 
 Os 5 de maior valor:
 
-- **Conta não informada** · GTK 500 · US$ 26.768 de tabela · aberto há 152 dias · score 31
-- **Ontomedia** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 165 dias · score 5
-- **Silis** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 163 dias · score 6
-- **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 159 dias · score 8
-- **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 152 dias · score 13
+- **Conta não informada** · GTK 500 · US$ 26.768 de tabela · aberto há 152 dias · score 0
+- **Ontomedia** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 165 dias · score 0
+- **Silis** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 163 dias · score 0
+- **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 159 dias · score 0
+- **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 152 dias · score 0
 
 ## Qualifique: 54 deals (US$ 120.642 de tabela)
 

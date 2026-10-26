@@ -69,6 +69,21 @@ def open_at(view: pd.DataFrame, S) -> pd.DataFrame:
     return out
 
 
+def quarter_phase(date) -> int:
+    """Mês dentro do trimestre: 1 (jan, abr, jul, out), 2 (fev, mai, ago, nov) ou 3 (mar, jun, set, dez)."""
+    return (pd.Timestamp(date).month - 1) % 3 + 1
+
+
+def quarter_phase_series(dates) -> np.ndarray:
+    """`quarter_phase` de cada data (vetor de inteiros 1, 2 ou 3)."""
+    return ((pd.DatetimeIndex(dates).month.to_numpy() - 1) % 3 + 1).astype("int64")
+
+
+def same_phase(train: pd.DataFrame, phase: int) -> pd.DataFrame:
+    """Linhas do treino cuja foto (`snapshot_date`) cai no mesmo mês do trimestre que `phase`."""
+    return train.loc[quarter_phase_series(train["snapshot_date"]) == phase]
+
+
 def snapshot_dates(T, horizon_days: int, first_snapshot) -> pd.DatetimeIndex:
     """Fotos mensais de treino: fins de mês de `first_snapshot` até T, só as que fecham o horizonte até T."""
     T = pd.Timestamp(T)

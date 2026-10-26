@@ -309,4 +309,3 @@ td.zero { color: var(--muted); }
   .btn-wide { max-width: none; }
 }
 
-.foque-warning { display: block; margin-top: 6px; padding: 6px 8px; border-left: 3px solid #d99a00; background: rgba(217,154,0,.12); }

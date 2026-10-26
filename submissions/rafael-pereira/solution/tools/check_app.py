@@ -320,6 +320,91 @@ def check_c_modo_teste(env: Env, data: dict):
     return (not fails and bool(ok_txt), "; ".join(fails) or " | ".join(ok_txt))
 
 
+def outcome_stats(snap: dict, **flt) -> dict[str, dict]:
+    """n, ganhos e receita ganha por lista, recontados dos deals do snapshot de teste com os filtros dados."""
+    out = {c: {"n": 0, "won": 0, "revenue": 0} for c in ("Foque", "Reative", "Limpe")}
+    for d in snap["deals"]:
+        if match(d, **flt) and d["cat"] in out:
+            o = out[d["cat"]]
+            o["n"] += 1
+            if d["outcome"]["status"] == "Ganho":
+                o["won"] += 1
+                o["revenue"] += d["outcome"]["close_value"] or 0
+    return out
+
+
+def check_resumos_filtrados(env: Env, data: dict):
+    """Modo teste: abas, frase de ação e resumos por lista (n, ganhos, receita) seguem os filtros e batem com a recontagem dos deals.
+    Com um vendedor escolhido não pode haver porcentagem (sem taxa de vitória por vendedor)."""
+    fails, ok_txt = [], []
+    for snap in [s for s in data["snapshots"] if s["mode"] == "teste"]:
+        cases = [("sem filtro", "", {}), ("manager", "filter-manager", {"manager": top_of(snap, "manager")}),
+                 ("região", "filter-region", {"region": top_of(snap, "region")}),
+                 ("vendedor", "filter-agent", {"agent": top_of(snap, "agent")})]
+        for label, testid, flt in cases:
+            with env.page(f"modo={snap['date']}") as page:
+                ready(page)
+                if testid:
+                    select(page, testid, list(flt.values())[0])
+                want = outcome_stats(snap, **flt)
+                want_tabs = expected_counts(snap, **flt)
+                if {c: v for c, v in tab_counts(page).items() if c != "Qualifique"} != {c: v for c, v in want_tabs.items() if c != "Qualifique"}:
+                    fails.append(f"{snap['date']} {label}: abas {tab_counts(page)} != recontagem {want_tabs}")
+                for c, w in want.items():
+                    loc = f"[data-testid=backtest-summary-{c}]"
+                    got = {k: page.get_attribute(loc, f"data-{k}") for k in ("n", "won", "revenue", "pct")}
+                    if (int(got["n"]), int(got["won"]), round(float(got["revenue"]))) != (w["n"], w["won"], round(w["revenue"])):
+                        fails.append(f"{snap['date']} {label} {c}: UI {got} != recontagem {w}")
+                    if label == "vendedor":
+                        if got["pct"] is not None or "%" in page.inner_text(loc):
+                            fails.append(f"{snap['date']} vendedor {c}: o resumo mostra porcentagem (proibido: taxa de vitória por vendedor)")
+                    elif w["n"] and (got["pct"] is None or abs(float(got["pct"]) - 100 * w["won"] / w["n"]) > 0.051):
+                        fails.append(f"{snap['date']} {label} {c}: data-pct {got['pct']} != {100 * w['won'] / w['n']:.1f}")
+                if label == "sem filtro":
+                    for c, o in snap["outcome_summary"].items():
+                        if (want[c]["n"], want[c]["won"]) != (o["n"], round(o["pct_ganhos"] * o["n"])):
+                            fails.append(f"{snap['date']} {c}: recontagem != outcome_summary")
+                if label != "sem filtro":
+                    ok_txt.append(f"{snap['date']} {label}")
+    return (not fails and bool(ok_txt), "; ".join(fails[:6]) or "resumos do modo teste recalculados com os filtros: " + ", ".join(ok_txt))
+
+
+def check_optgroup(env: Env, data: dict):
+    """O seletor 'Quem é você?' é agrupado por manager (optgroup), com os vendedores certos em cada grupo."""
+    people = data["people"]
+    fails = []
+    with env.page() as page:
+        ready(page)
+        groups = page.eval_on_selector_all(
+            "[data-testid=filter-agent] optgroup",
+            "gs => gs.map(g => [g.label, [...g.querySelectorAll('option')].map(o => o.value)])")
+        got = {label: vals for label, vals in groups}
+        for m in people["managers"]:
+            label = f"Time de {m['name']} — {m['region']}"
+            want = sorted(a["name"] for a in people["agents"] if a["manager"] == m["name"])
+            if label not in got:
+                fails.append(f"sem optgroup '{label}'")
+            elif sorted(got[label]) != want:
+                fails.append(f"optgroup '{label}' com vendedores diferentes do cadastro")
+        loose = page.eval_on_selector_all("[data-testid=filter-agent] > option", "os => os.map(o => o.value).filter(v => v)")
+        if loose:
+            fails.append(f"vendedores fora de optgroup: {loose[:3]}")
+    return (not fails, "; ".join(fails) or f"{len(groups)} optgroups, um por manager, com os vendedores do time")
+
+
+def check_sem_atencao(env: Env, data: dict):
+    """A caixa 'Atenção' do Foque sumiu (a correção está na curva, não num aviso)."""
+    fails = []
+    for h in ("aba=Foque", "aba=Reative", "aba=Limpe"):
+        with env.page(h) as page:
+            ready(page)
+            if page.locator("[data-testid=foque-warning]").count() or page.locator(".foque-warning").count():
+                fails.append(f"{h}: elemento foque-warning ainda existe")
+            if "Atenção" in page.inner_text("[data-testid=instruction]"):
+                fails.append(f"{h}: a instrução ainda traz 'Atenção'")
+    return (not fails, "; ".join(fails) or "sem caixa 'Atenção' nas abas Foque, Reative e Limpe")
+
+
 def check_d_como_funciona(env: Env, data: dict):
     fails = []
     for snap in data["snapshots"][:2]:
@@ -621,6 +706,12 @@ def check_contrato(data: dict):
                 fails.append(f"{s['date']}: outcome_summary ausente ou com n diferente de summary")
         elif "outcome_summary" in s:
             fails.append(f"{s['date']}: outcome_summary só existe no modo teste")
+    for s in snaps:
+        miss = [k for k in ("knot_days", "p_fresh", "limpe_after_days", "limpe_rule", "limpe_min_chance", "max_won_cycle_days") if k not in s["model"]]
+        if miss:
+            fails.append(f"{s['date']}: model sem {miss}")
+        if not s["model"]["knot_days"] <= s["model"]["limpe_after_days"]:
+            fails.append(f"{s['date']}: fim do Foque depois do fim do Reative")
     bt = data["backtest"]
     if not bt.get("metrics") or not bt.get("rows") or not bt.get("headline"):
         fails.append("backtest sem metrics, rows ou headline")
@@ -976,6 +1067,9 @@ def main() -> int:
         run_check(rep, "filtros em cascata (região > manager > vendedor) e Limpar", lambda: check_cascata(env, data))
         run_check(rep, "estado no location.hash (vendedor, aba, modo) sobrevive a recarregar", lambda: check_hash(env, data))
         run_check(rep, "(c) modo teste: data-n/data-pct = outcome_summary; selos; Qualifique indisponível", lambda: check_c_modo_teste(env, data))
+        run_check(rep, "modo teste: resumos por lista seguem os filtros (sem % por vendedor)", lambda: check_resumos_filtrados(env, data))
+        run_check(rep, "seletor de vendedores agrupado por manager (optgroup)", lambda: check_optgroup(env, data))
+        run_check(rep, "sem a caixa 'Atenção' no Foque", lambda: check_sem_atencao(env, data))
         run_check(rep, "(d) 'Como funciona' abre com exatamente 5 linhas", lambda: check_d_como_funciona(env, data))
         run_check(rep, "(e) 1º card expande (2 a 4 frases, detalhes) e funciona por teclado", lambda: check_e_card(env, data))
         run_check(rep, "(f) vendedor sem deals mostra o estado vazio explicativo", lambda: check_f_sem_deals(env, data))

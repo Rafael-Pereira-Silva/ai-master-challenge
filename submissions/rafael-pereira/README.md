@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-O que separa os deals do CRM é o frescor (há quanto tempo estão abertos), não o produto, o setor, a região ou o porte (todos ficam entre 60% e 65% de vitória), e a ferramenta usa isso para dizer a cada vendedor onde focar, o que reativar e o que largar. Em quatro datas passadas, os 20% de deals no topo do score concentraram em média 61,1% da receita que foi ganha depois, contra 48,1% se o time ordenasse só pelo valor, 29,7% pelos mais recentes e 20,0% num sorteio, e o critério fixado antes do teste passou sem ajuste. Hoje, 1.291 dos 1.589 deals em Engaging estão abertos há mais tempo que o maior ciclo já fechado, e a lista Limpe soma cerca de US$ 3,2 mi de valor de tabela provavelmente inflado. O ganho vem sobretudo de tirar esses deals parados do topo: entre os deals ainda vivos o score só empata com a ordenação por valor, e os dados são sintéticos. Recomendo um sprint de limpeza da lista Limpe, confirmando cada deal com o cliente antes de encerrar, e uma rotina de segunda-feira com as listas Foque e Reative.
+O que separa os deals do CRM é o frescor (há quanto tempo estão abertos), não o produto, o setor, a região ou o porte (todos ficam entre 60% e 65% de vitória), e a ferramenta usa isso para dizer a cada vendedor onde focar, o que reativar e o que largar. Em quatro datas passadas, os 20% de deals no topo do score concentraram em média 62,5% da receita ganha depois, contra 48,1% ordenando só pelo valor, 29,7% pelos mais recentes e 20,0% num sorteio, e o critério fixado antes do teste passou, mas a curva atual foi trocada depois do backtest, quando usei a ferramenta como vendedor e vi que a primeira versão dava a mesma chance de 0 a 95 dias. Hoje, 1.463 dos 1.589 deals em Engaging estão na lista Limpe (chance abaixo de 2% ou mais velhos que o maior ciclo já fechado), cerca de US$ 3,6 mi de valor de tabela provavelmente inflado, e só 60 estão no Foque. O ganho vem sobretudo de tirar esses deals parados do topo: entre os deals ainda vivos o score só empata com a ordenação por valor, dentro do Foque ele ordena pouco, e os dados são sintéticos. Recomendo um sprint de limpeza da lista Limpe, confirmando cada deal com o cliente antes de encerrar, e uma rotina de segunda-feira com as listas Foque e Reative.
 
 ---
 
@@ -44,38 +44,54 @@ O build é determinístico: rodar duas vezes gera os mesmos bytes. A data de ref
 
 1. **Do problema da Head de RevOps ao que medir.** As duas dores são tempo jogado em deal que não fecha e deal bom esfriando sem alerta. Isso não pede "qual deal tem mais chance", pede "onde ponho minha próxima hora". Por isso a métrica primária é a receita ganha capturada pelos 20% do topo, e a AUC é reportada, mas não decide. Essa regra foi escrita no [escopo](docs/SCOPE.md) antes do código de avaliação.
 2. **Os dados derrubaram a ideia óbvia.** Um score por atributos dá perto de 63% para todo deal. O que separa é o ciclo: nenhum deal foi ganho depois de 138 dias, e 81% dos Engaging já passaram disso. Antes de usar qualquer coisa, limpei o que quebra o join e o que vaza: "GTXPro" contra "GTX Pro" (1.480 deals sumiriam) e os 1.425 deals sem conta, todos abertos, que funcionariam como detector de zumbi ([qualidade dos dados](docs/DATA_QUALITY.md)).
-3. **O score.** Chance de ganho em 90 dias olhando só a idade do deal (curva que fica plana até um "joelho" aprendido e depois cai, sem nunca subir), vezes o preço de tabela, numa escala de 0 a 100. Os limites das listas saem da curva e do maior ciclo já ganho, não de um "se idade > 138". O vendedor não entra, e nenhum atributo entrou depois do teste ([score e validação](docs/SCORING.md)).
-4. **Validação sempre no tempo.** Quatro cortes passados (30/06, 31/07, 31/08 e 30/09/2017), cada um com um modelo que só vê o que o CRM sabia naquele dia, contra três baselines: valor, recência e sorteio. O critério para "vencer" foi fixado antes do primeiro número. Um teste troca tudo o que acontece depois do corte por valores aleatórios e exige que o modelo e os scores não mudem.
+3. **O score.** Chance de ganho em 90 dias olhando só a idade do deal, vezes o preço de tabela, numa escala de 0 a 100. A curva cai com a idade desde o primeiro dia (faixas de idade com regressão isotônica) e é treinada só com as fotos do mesmo ponto do trimestre que a data do modelo. Os limites das listas saem da curva (Foque até a chance cair à metade da de um deal novo; Limpe quando ela fica abaixo de 2% ou o deal passa do maior ciclo já ganho), não de um "se idade > 138". O vendedor não entra, e nenhum atributo entrou depois do teste ([score e validação](docs/SCORING.md)).
+4. **Validação sempre no tempo.** Quatro cortes passados (30/06, 31/07, 31/08 e 30/09/2017), cada um com um modelo que só vê o que o CRM sabia naquele dia, contra três baselines: valor, recência e sorteio. O critério para "vencer" foi fixado antes do primeiro número e foi mantido na correção da curva. Um teste troca tudo o que acontece depois do corte por valores aleatórios e exige que o modelo e os scores não mudem.
 5. **Interface de decisão.** Frase de ação na primeira tela ("foque em N, reative M, limpe K"), uma lista por ação, explicação por deal e o modo teste, para a Head de RevOps ver o score contra a história antes de confiar nele.
 
 ### Resultados / Findings
 
-Cinco achados, todos gerados por script a partir do `backtest_metrics.json`:
+Seis achados, todos gerados por script a partir do `backtest_metrics.json` (a curva v1 é a versão antes da correção; a v2 é a atual):
 
 <!-- AUTO:readme-achados -->
-- **Critério pré-registrado: PASSOU, sem ajuste.** O score vence valor, recência e o sorteio nos 4 cortes.
-- **Receita média no top 20%:** score 61,1%, valor 48,1%, recência 29,7%, aleatório 20,0%.
-- **A recência ganha em AUC** em 3 dos 4 cortes (30/06, 31/08 e 30/09); a maior folga é em 30/09/2017, com 0,83 contra 0,65 do score. O score só ganha em AUC em 31/07.
-- **Entre os deals já resolvidos o score empata com o valor:** receita média no top 20% de 48,7% contra 49,0%, e a maior diferença em um corte é de 0,5 pp. A vantagem do backtest completo vem de tirar do topo os deals parados.
-- **O Foque de hoje está otimista:** 69 dos 126 deals têm 61 dias ou mais, e nos fins de trimestre testados esses deals ganharam menos que os de até 30 dias (-17,4 pp em 30/06 e -41,3 pp em 30/09). O modelo não corrige isso.
+- **Critério pré-registrado: PASSOU para a curva v2 e PASSOU para a v1.** O score v2 vence valor, recência e o sorteio nos 4 cortes. A v2 é uma mudança pós-backtest, pedida por mim depois de usar a ferramenta como vendedor.
+- **Receita média no top 20%:** score v2 62,5%, score v1 61,1%, valor 48,1%, recência 29,7%, aleatório 20,0%.
+- **A curva v1 era plana de 0 a 95 dias; a v2 cai desde o primeiro dia.** Hoje, a chance de um deal novo é 49,5%, com 30 dias 49,0%, com 60 dias 27,0% e com 90 dias 6,6%. O Foque de hoje passou de 126 para 60 deals.
+- **Dentro do Foque (deals de até 90 dias) a ordem melhorou pouco:** receita no top 20% de 52,5% (v1 49,7%, valor 49,1%) e AUC de 0,52, perto de um sorteio. O ganho está no corte de fim de trimestre.
+- **A recência ganha em AUC** em 3 dos 4 cortes (30/06, 31/08 e 30/09); a maior folga é em 30/09/2017, com 0,83 contra 0,72 do score v2.
+- **Entre os deals já resolvidos o score empata com o valor:** receita média no top 20% de 48,9% contra 49,0%, e a maior diferença em um corte é de 1,0 pp. A vantagem do backtest completo vem de tirar do topo os deals parados.
 <!-- /AUTO:readme-achados -->
 
-**Por que o score não distingue um deal de 12 dias de um de 94 dentro do Foque:** não mexi na curva depois de ver o backtest (seria ajuste pós-hoc), e o número abaixo mostra que não havia direção estável para ela seguir.
+**A correção da curva (depois do backtest, a pedido meu).** Usei a página publicada como vendedor e o top da Rosalina Dieter era um GTK 500 com 95 dias e score 100. A curva v1 era plana de 0 a 95 dias; o briefing mostrava 50%, 34%, 7% e 0% por faixa de idade. Dois motivos: o treino misturava fotos de fases diferentes do trimestre, com padrões opostos, e o desenho "platô + queda" impõe chance constante antes do joelho. A v2 treina cada data só com fotos do mesmo mês do trimestre e é monotônica desde o dia 0. Antes e depois:
 
-<!-- AUTO:foque-plato-sinal -->
-Dentro do Foque (o platô da curva, até 95 dias), a diferença de ganhos em 90 dias entre os deals de 61 dias ou mais e os de 0 a 30 dias foi de -17,4 pp em 30/06, +19,2 pp em 31/07, +21,3 pp em 31/08 e -41,3 pp em 30/09. O sinal troca entre os cortes (2 negativos e 2 positivos), então dentro do platô não há uma inclinação estável a aprender, e é isso que justifica a curva plana até o joelho em vez de premiar os mais novos. O salto está no joelho: é depois dele que a chance cai.
-<!-- /AUTO:foque-plato-sinal -->
+<!-- AUTO:scoring-correcao -->
+- **Chance de hoje.** v1: 40% de 0 a 95 dias, igual para todos (o platô). v2: 50% para um deal novo e 49% com 30 dias, 27% com 60 dias, 7% com 90 dias.
+- **Listas de hoje.** Foque: 126 → 60 deals. Reative: 172 → 66. Limpe: 1.291 → 1.463 (US$ 3.198.664 → US$ 3.591.439 de tabela).
+- **Backtest principal (receita no top 20%, média dos cortes).** v1: 61,1%; v2: 62,5%. AUC: 0,64 → 0,66.
+- **Ordem dentro do Foque (deals de até 90 dias).** Receita no top 20%: v1 49,7%, v2 52,5%, valor 49,1%; AUC: v1 0,51, v2 0,52, valor 0,50.
+<!-- /AUTO:scoring-correcao -->
+
+A melhora está concentrada no corte de fim de trimestre (30/09). A ordem dentro do Foque (deals de até 90 dias, média dos 4 cortes) é só um pouco melhor que a do preço:
+
+<!-- AUTO:mc-ordem-foque -->
+| Método (deals de até 90 dias, média dos cortes) | AUC | Receita no top 20% |
+| :--- | ---: | ---: |
+| Score v2 (curva por faixas) | 0,52 | 52,5% |
+| Score v1 (platô) | 0,51 | 49,7% |
+| Ordenar por valor | 0,50 | 49,1% |
+| Mais recentes primeiro | 0,56 | 23,5% |
+| Aleatório (referência) | 0,50 | 20,1% |
+<!-- /AUTO:mc-ordem-foque -->
 
 **Backtest corte a corte** (a tabela completa, com ganhos capturados, bootstrap e calibração, está no [SCORING](docs/SCORING.md)):
 
 <!-- AUTO:readme-backtest -->
-| Corte | Receita no top 20%: score | valor | recência | aleatório | AUC do score | AUC da recência |
-| :--- | ---: | ---: | ---: | ---: | ---: | ---: |
-| **Média dos 4 cortes** | 61,1% | 48,1% | 29,7% | 20,0% | 0,64 | 0,70 |
-| 30/06/2017 | 61,3% | 48,6% | 27,7% | 20,0% | 0,66 | 0,73 |
-| 31/07/2017 | 57,9% | 48,7% | 12,8% | 20,1% | 0,64 | 0,58 |
-| 31/08/2017 | 60,7% | 48,2% | 31,6% | 19,8% | 0,63 | 0,66 |
-| 30/09/2017 | 64,8% | 47,1% | 46,8% | 20,3% | 0,65 | 0,83 |
+| Corte | Receita no top 20%: score v2 | score v1 | valor | recência | aleatório | AUC do score v2 | AUC da recência |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| **Média dos 4 cortes** | 62,5% | 61,1% | 48,1% | 29,7% | 20,0% | 0,66 | 0,70 |
+| 30/06/2017 | 61,0% | 61,3% | 48,6% | 27,7% | 20,0% | 0,66 | 0,73 |
+| 31/07/2017 | 57,4% | 57,9% | 48,7% | 12,8% | 20,1% | 0,63 | 0,58 |
+| 31/08/2017 | 59,9% | 60,7% | 48,2% | 31,6% | 19,8% | 0,63 | 0,66 |
+| 30/09/2017 | 71,7% | 64,8% | 47,1% | 46,8% | 20,3% | 0,72 | 0,83 |
 
 Receita capturada pelos 20% de deals no topo da ordenação, como fração da receita que foi de fato ganha depois. Aleatório = média de 200 sorteios. Cada corte usa só o que o CRM sabia naquele dia.
 <!-- /AUTO:readme-backtest -->
@@ -85,13 +101,13 @@ Receita capturada pelos 20% de deals no topo da ordenação, como fração da re
 <!-- AUTO:readme-hoje -->
 | Lista | Idade do deal | Ação | Deals | Valor de tabela |
 | :--- | :--- | :--- | ---: | ---: |
-| Foque | até 95 dias | avançar | 126 | US$ 300.790 |
-| Reative | 96 a 138 dias | retomar o contato | 172 | US$ 392.775 |
-| Limpe | mais de 138 dias | confirmar e encerrar ou atualizar | 1.291 | US$ 3.198.664 |
+| Foque | até 61 dias | avançar | 60 | US$ 123.253 |
+| Reative | 62 a 95 dias | retomar o contato | 66 | US$ 177.537 |
+| Limpe | mais de 95 dias | confirmar e encerrar ou atualizar | 1.463 | US$ 3.591.439 |
 | Qualifique | Prospecting (sem data) | qualificar | 500 | US$ 1.073.986 |
 <!-- /AUTO:readme-hoje -->
 
-O Limpe tem zero ganhos nos quatro cortes do backtest, por construção do dataset. A lista Reative teve de 0% a 23% de ganhos nos cortes: promete mais do que entregou em fim de trimestre.
+O Limpe tem zero ganhos nos quatro cortes do backtest, por construção do dataset. A lista Reative teve de 0% a 5% de ganhos nos cortes: promete pouco e entrega pouco.
 
 **A interface** (computador e celular; dados reais, tirados por `tools/check_app.py`):
 
@@ -105,8 +121,8 @@ Atributos testados e descartados (um por vez, com a regra fixada antes): produto
 
 Para a Head de RevOps, em ordem de prioridade:
 
-1. **Sprint de limpeza da lista Limpe.** São 1.291 deals e cerca de US$ 3,2 mi de valor de tabela. Limpe quer dizer confirmar com o cliente e então encerrar ou atualizar, não descartar: o deal parado pode ser CRM desatualizado. Feito isso, o pipeline passa a mostrar o que é vivo.
-2. **Rotina de segunda-feira com Foque e Reative.** Cada vendedor abre o próprio brief, trabalha o Foque e dá um contato de retomada no Reative. Ao ler o Foque de hoje, desconfie dos deals com 61 dias ou mais: hoje é fim de trimestre, e nos fins de trimestre testados esses deals ganharam menos que os novos.
+1. **Sprint de limpeza da lista Limpe.** São 1.463 deals e cerca de US$ 3,6 mi de valor de tabela (1.291 deles passam do maior ciclo já fechado). Limpe quer dizer confirmar com o cliente e então encerrar ou atualizar, não descartar: o deal parado pode ser CRM desatualizado. Feito isso, o pipeline passa a mostrar o que é vivo.
+2. **Rotina de segunda-feira com Foque e Reative.** Cada vendedor abre o próprio brief, trabalha o Foque e dá um contato de retomada no Reative. Hoje é fim de trimestre, e o Foque ficou curto (deals de até 61 dias): o que já passou disso cai para Reative ou Limpe.
 3. **Higiene do CRM.** Preencher a conta (1.425 deals não têm), registrar a data em que o deal entrou em Prospecting (os 500 não têm, e por isso não podem ser pontuados) e guardar o histórico de estágios. Sem isso, a lista Qualifique não tem prova e o score só enxerga "dias desde o engajamento".
 4. **Não usar win rate por vendedor.** A diferença entre vendedores é compatível com ruído (qui-quadrado p=0,26). Cobrar ou premiar com base nela pune pessoas por acaso.
 5. **Recalibrar com dados reais.** Este dataset é sintético. Rodar o mesmo backtest, com o mesmo critério fixado antes, num CRM real, a cada trimestre (regras de recalibração no [model card](docs/MODEL_CARD.md)).
@@ -116,8 +132,8 @@ Para a Head de RevOps, em ordem de prioridade:
 - **Dataset sintético.** O teto de 138 dias, a regra de fechar no trimestre do engajamento ou no seguinte e os fechamentos rápidos no primeiro mês do trimestre são padrões do gerador. Estão documentados e não são explorados, mas o Limpe herda o teto de 138 dias; em CRM real um deal mais velho pode ser ganho.
 - **A vantagem vem dos zumbis.** Entre os deals já resolvidos o score só empata com o valor. A ferramenta ajuda a limpar a fila e a priorizar por valor; não prova que escolha bem entre os deals vivos.
 - **A recência ganha em AUC** em três dos quatro cortes. O score ganha onde importa para a pergunta da Head de RevOps (receita), não em quem vai ganhar.
-- **O Foque de hoje está otimista** para os deals com 61 dias ou mais. Medido e documentado, não corrigido no modelo.
-- **Corte de 30/06 com uma foto de treino só**, e a regra "fotos a partir de 31/03" foi escolhida depois de o planejador ver o protótipo. Com 28/02 o critério também passaria; a diferença está na [seção 7 do SCORING](docs/SCORING.md).
+- **A curva v2 foi trocada depois do backtest.** O PASSOU do critério para a v2 não é um teste às cegas: a v2 foi desenhada sabendo o que o backtest da v1 mostrou. Dentro do Foque a ordem melhora pouco (AUC perto de um sorteio) e a melhora está concentrada no corte de 30/09.
+- **Três dos quatro cortes têm uma foto de treino só**, porque agora só vale a fase do trimestre do corte. A regra "fotos a partir de 31/03" foi escolhida depois de o planejador ver o protótipo. Com 28/02 o critério também passaria; a diferença está na [seção 7 do SCORING](docs/SCORING.md). O teste de atributos não foi repetido sobre a v2.
 - **Censura:** deals abertos em 31/12/2017 contam como "não ganho". Prospecting não tem score nem backtest. Horizonte de 90 dias e passo da grade do joelho não tiveram sensibilidade medida.
 - **chat-exports parciais.** Só a sessão de orquestração no Claude Code tem export ([`process-log/chat-exports/`](process-log/chat-exports/sessao-orquestracao-claude-code.md)). A fase 0, feita no app do Claude, está registrada em narrativa, sem export.
 - **Git:** a máquina não tinha git nem gh. O repositório foi clonado e commitado com dulwich (biblioteca Python), por um helper fora da pasta; o autor dos commits é o Rafael, com o trailer `Co-Authored-By: Claude`.
@@ -153,25 +169,27 @@ Para a Head de RevOps, em ordem de prioridade:
 | A tese "frescor > atributos", depois que os dados derrubaram o meu plano inicial | Curva de chance por idade, score e explicações | Backtest temporal em 4 cortes contra 3 baselines, com critério e ajuste único fixados antes |
 | Tirar o vendedor do score (diferença compatível com ruído) | Implementação do score | Teste de permutação: trocar os vendedores de lugar não muda nenhum score |
 | "Nenhum número in-sample é resultado" e "nenhum número digitado à mão" | Limpeza, métricas e documentos | Teste que confere cada número da prosa contra os arquivos gerados; teste de mutação do futuro contra vazamento |
-| Não usar Streamlit; página estática que abre com duplo-clique | Interface e build | Playwright em `file://` com 24 checagens, inclusive contagens contra o SCORING |
+| Não usar Streamlit; página estática que abre com duplo-clique | Interface e build | Playwright em `file://` com 27 checagens, inclusive contagens contra o SCORING |
 | Não publicar nada em meu nome sem mim | Commits locais e texto do PR | O push, o GitHub Pages e o PR ficaram reservados para mim |
-| Revisão independente e "não maquie resultado" | Correções apontadas pelo revisor | Modelo, parâmetros e métrica congelados no bloco 6: crítica de modelagem vira limitação documentada, não ajuste pós-hoc |
+| Revisão independente e "não maquie resultado" | Correções apontadas pelo revisor | Modelo, parâmetros e métrica congelados no bloco 6: crítica de modelagem vira limitação documentada, não ajuste pós-hoc. Depois, ao usar a ferramenta como vendedor, pedi a troca da curva, que ficou declarada como mudança pós-backtest, com a versão antiga ao lado |
 
 Passo a passo:
 
 0. **Fase 0 (eu + Claude app) e bloco 0 (setup).** Explorei os dados em conversa, achei o join quebrado ("GTXPro") e a métrica inflada, e pivotei do score por atributos para o frescor. Com isso redigi o kit: 7 decisões fechadas, um prompt por bloco com checkpoints, o guia de armadilhas e o prompt de operação. No Claude Code, o orquestrador montou o ambiente, e um executor Haiku reproduziu os números da fase 0 contra o briefing antes de qualquer código novo.
 1. **Bloco 1, escopo.** Um executor Sonnet respondeu às 4 perguntas que eu tinha deixado em aberto. Cada resposta traz alternativa descartada e evidência. O executor também achou um erro no meu briefing (o produto com mais deals) e contestou com dados uma justificativa do plano.
 2. **Bloco 2, dados.** Limpeza com três investigações, cada uma com critério escrito antes do resultado. Montamos a infraestrutura "todo número vem de script": blocos de documento regenerados e um teste que confere cada número da prosa.
-3. **Bloco 3, score e validação.** A checagem de vazamento foi escrita antes do código, como exigi. O critério de sucesso foi registrado antes do primeiro número de desempenho. O critério passou na primeira rodada, e o ajuste único reservado não foi usado.
+3. **Bloco 3, score e validação.** A checagem de vazamento foi escrita antes do código, como exigi. O critério de sucesso foi registrado antes do primeiro número de desempenho. O critério passou na primeira rodada, e o ajuste único reservado não foi usado (a troca de curva do item 7 é outra coisa, feita depois).
 4. **Bloco 4, ferramenta.** Para acelerar sem perder qualidade, a interface foi construída em paralelo ao motor, a partir de um contrato de dados escrito antes. Depois a página foi verificada com Playwright, e uma passada "vendedor na segunda de manhã" corrigiu 3 atritos com screenshots de antes e depois.
 5. **Bloco 5, documentação.** README e model card, com todos os números vindos de blocos regenerados e conferidos por teste.
 6. **Bloco 6, revisão independente.** Dois revisores de contexto limpo avaliaram a submissão como a banca faria. As críticas de interface e documentação foram corrigidas. As de modelagem viraram texto com número, porque eu tinha congelado o modelo para evitar ajuste pós-hoc ([relatórios e triagem](process-log/06_revisao-independente.md)).
+7. **Revisão minha e correção da curva.** Depois do bloco 6, revisei a entrega e usei a página publicada como vendedor: a chance era constante de 0 a 95 dias e o top da Rosalina Dieter era um GTK 500 com 95 dias. Pedi a correção de ponta a ponta (curva, limiares, métrica de ordem dentro do Foque, frase do card, interface e documentos), com a curva antiga mantida para comparação e a mudança declarada como pós-backtest ([registro](process-log/07_correcao-curva.md)).
 
 **Onde eu intervim durante a execução** (registrado no [export da sessão](process-log/chat-exports/sessao-orquestracao-claude-code.md), com horários):
 - **Paralelizar sem perder qualidade.** Pedi para acelerar com trabalho paralelo, sem perder qualidade. O orquestrador redesenhou o fluxo para até 3 executores ao mesmo tempo, com posse exclusiva de arquivos e um commit por bloco.
 - **Retomar sem refazer.** A cota de uso acabou no meio do bloco 3. Mandei retomar os executores de onde pararam, não recomeçar.
 - **Gestão de custo.** Pedi para refinar as instruções e usar cada modelo no esforço exato. A partir daí, cada etapa teve modelo e nível de esforço escolhidos por complexidade, com executores retomados em vez de recriados.
 - **Revisão final.** Revisei a entrega, alinhei a narrativa ao perfil de AI Master e reforcei as evidências ([`07_revisao-do-rafael.md`](process-log/07_revisao-do-rafael.md)).
+- **Correção da curva.** Usei a ferramenta publicada como vendedor, vi o problema e pedi a correção ([`07_correcao-curva.md`](process-log/07_correcao-curva.md)).
 
 ### Onde a IA errou e como corrigi
 
@@ -183,7 +201,7 @@ Só episódios registrados em `process-log/` e em `docs/DECISIONS.md`. Na execu�
 - **Win rate de 82% no 1º trimestre tratado como possível insight (fase 0, com Rafael).** Rebaixei a achado suspeito de artefato de recorte. O bloco 2 investigou e confirmou: os fechamentos do trimestre são só de março.
 - **Plano inicial com score por atributos (fase 0, com Rafael).** O plano assumia win rate por produto ou setor. Os dados mostraram todos entre 60% e 65%, e eu pivotei para o frescor.
 
-**Na execução delegada (pego pelos controles):**
+**Na execução delegada (os onze primeiros foram pegos pelos controles; o último, não):**
 
 - **Erro do briefing sobre o MG Special (execução delegada).** O briefing dizia que o produto tinha o maior volume de deals, e o primeiro rascunho do escopo repetiu a frase. A regra "todo número sai dos dados" fez o executor conferir: o GTX Basic tem mais deals, e o MG Special é o segundo. O escopo e o `facts.json` foram corrigidos. O briefing, insumo da fase 0, foi mantido, com a divergência registrada.
 - **Justificativa do plano para a pergunta 3 refutada (execução delegada).** O plano dizia que a chance de ganho é estável enquanto o deal é jovem, mas as fotos do briefing mostram a chance caindo desde cedo. A decisão de ordenar o Foque por valor esperado foi mantida, e a justificativa foi trocada.
@@ -196,6 +214,7 @@ Só episódios registrados em `process-log/` e em `docs/DECISIONS.md`. Na execu�
 - **Rascunho do SCORING com afirmações que não batiam (execução delegada).** O verificador de números acusou valores sem fonte. Uma conferência achou frases erradas, por exemplo "três fotos" onde eram duas. Tudo foi corrigido antes de fechar.
 - **`pytest` que travou (execução delegada).** Uma execução passou de 10 minutos. O log registra que a causa não foi diagnosticada, em vez de inventar um motivo. Num caso parecido no bloco 4, a causa foi achada: um assert que tentava imprimir o arquivo de dados inteiro.
 - **Contraste e telas vazias (execução delegada).** O script de contraste reprovou a cor da lista Reative. Além disso, a aba padrão deixava vazia a tela do vendedor com mais deals. As duas coisas foram corrigidas antes dos screenshots finais.
+- **Curva em patamar que contradizia o briefing (execução delegada).** A IA ajustou uma curva em patamar e o Rafael detectou o problema usando a ferramenta publicada como vendedor (o top da Rosalina Dieter era um GTK 500 com 95 dias e score 100). Nenhum controle pegou: o backtest passou, o verificador de números conferia só os números, e o texto do SCORING ainda justificava o patamar com "o sinal troca entre os cortes". O briefing já mostrava 50%, 34%, 7% e 0% por idade, e a curva não foi confrontada com ele. A correção (curva por faixas, fotos da mesma fase do trimestre, limiares revistos, frase do card comparativa, resumos do modo teste seguindo os filtros) está em [`process-log/07_correcao-curva.md`](process-log/07_correcao-curva.md), com os números antes e depois.
 
 ### O que eu adicionei que a IA sozinha não faria
 
@@ -210,7 +229,7 @@ O G4 descreve o AI Master como quem entende o problema antes de abrir a ferramen
   - trilha de auditoria (uma decisão por linha, com a alternativa descartada);
   - verificação automática de cada número publicado;
   - revisão independente com poder de crítica real.
-- **Decidi o que não automatizar.** Automatizei o volume: código, testes, documentos, revisão. Reservei para mim a escolha do problema, a tese, a regra de justiça e a publicação em meu nome. E deixei escrito antes, no prompt de operação, que o modelo só teria um ajuste e que o resultado não seria maquiado. Essa regra funcionou quando os dois revisores criticaram o mesmo ponto (dentro do Foque, o score equivale ao preço): a IA não mexeu na curva depois de ver o backtest. Mantenho essa escolha. Um gradiente de idade dentro do Foque é o próximo passo, mas com dados reais e um novo backtest, não como remendo para melhorar a nota.
+- **Decidi o que não automatizar.** Automatizei o volume: código, testes, documentos, revisão. Reservei para mim a escolha do problema, a tese, a regra de justiça e a publicação em meu nome. E deixei escrito antes, no prompt de operação, que o modelo só teria um ajuste e que o resultado não seria maquiado. Essa regra funcionou quando os dois revisores criticaram o mesmo ponto (dentro do Foque, o score equivale ao preço): a IA não mexeu na curva depois de ver o backtest. Mas o ponto estava certo, e eu o vi com os meus olhos ao usar a ferramenta como vendedor. A correção foi pedida por mim depois do backtest, e por isso está declarada como mudança pós-backtest, com a curva antiga ao lado, o critério reportado para as duas e os números que não melhoraram à vista.
 - **Exigi honestidade sobre os limites.** Pedi resultado sem maquiagem. Por isso a entrega diz onde o score perde (a recência ganha em AUC; entre deals vivos ele só empata com o valor) e por que a lista Limpe se chama "Limpe" e não "Descarte": um deal parado pode ser só CRM desatualizado.
 - **Usei IA como alavanca, com custo sob controle.** Desenhei a operação: Opus planeja, Sonnet e Haiku executam em paralelo, e um revisor de contexto limpo faz o papel da banca. Durante a execução, ajustei modelo e esforço para entregar dentro da cota, sem cortar validação nem process log.
 
@@ -220,12 +239,12 @@ O G4 descreve o AI Master como quem entende o problema antes de abrir a ferramen
 
 Tudo está nesta pasta. O índice, que liga cada pergunta da banca ao arquivo que a responde, é o [`process-log/README.md`](process-log/README.md).
 
-- [x] Screenshots da ferramenta com dados reais: [computador](process-log/screenshots/final_inicio_1280.png), [celular](process-log/screenshots/final_inicio_390.png), e os pares antes/depois dos 3 atritos corrigidos em [`process-log/screenshots/`](process-log/screenshots/).
+- [x] Screenshots da ferramenta com dados reais: [computador](process-log/screenshots/final_inicio_1280.png), [celular](process-log/screenshots/final_inicio_390.png), os pares antes/depois dos 3 atritos corrigidos e o par antes/depois da correção da curva (vendedora Rosalina Dieter, aba Foque: `antes-correcao-rosalina-*` e `depois-correcao-rosalina-*`) em [`process-log/screenshots/`](process-log/screenshots/).
 - [ ] Screen recording do workflow
 - [x] Chat exports: o [export da sessão de orquestração](process-log/chat-exports/sessao-orquestracao-claude-code.md), gerado por script a partir do export oficial do app. Traz as minhas mensagens com horário, o que o orquestrador fez em resposta e cada subagente disparado (modelo e esforço). A fase 0, feita no app do Claude, está registrada em narrativa em [`00_fase0_exploracao.md`](process-log/00_fase0_exploracao.md).
 - [x] Git history: um commit por bloco (`bloco 0` a `bloco 7`), autor Rafael Pereira, com o trailer `Co-Authored-By: Claude`.
 - [x] Outro: o kit que escrevi antes de delegar: [`CLAUDE.md`](CLAUDE.md) (7 decisões fechadas), [`PROMPTS.md`](PROMPTS.md) (um prompt por bloco com checkpoints), [`GUIA.md`](GUIA.md) (armadilhas) e [`PROMPT_AUTONOMO.md`](PROMPT_AUTONOMO.md) (regras de operação e de honestidade do process log).
-- [x] Outro: o plano do planejador ([`plano_execucao_opus.md`](process-log/plano_execucao_opus.md)), os logs por bloco (de [00](process-log/00_bloco-0.md) a [07](process-log/07_revisao-do-rafael.md)), o [DECISIONS](docs/DECISIONS.md) com uma linha por decisão, e as saídas e scripts da fase 0 ([`outputs/`](process-log/outputs/), [`scripts/`](process-log/scripts/eda.py)).
+- [x] Outro: o plano do planejador ([`plano_execucao_opus.md`](process-log/plano_execucao_opus.md)), os logs por bloco (de [00](process-log/00_bloco-0.md) a [07](process-log/07_revisao-do-rafael.md), mais a [correção da curva](process-log/07_correcao-curva.md)), o [DECISIONS](docs/DECISIONS.md) com uma linha por decisão, e as saídas e scripts da fase 0 ([`outputs/`](process-log/outputs/), [`scripts/`](process-log/scripts/eda.py)).
 - [x] Outro: duas revisões independentes de contexto limpo, com notas, triagem e correções, em [`process-log/06_revisao-independente.md`](process-log/06_revisao-independente.md).
 - A data de envio é preenchida por mim ao abrir o PR.
 

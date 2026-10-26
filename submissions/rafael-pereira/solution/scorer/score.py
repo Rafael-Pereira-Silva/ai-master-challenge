@@ -1,11 +1,19 @@
 """Chance de ganho por idade, valor esperado, score de 0 a 100 e categorias das listas.
 
-Modelo de chance, "platô + queda" (monotônico, sem corte duro):
+Duas curvas de chance (o score e as listas usam a v2; a v1 fica para comparação no backtest):
 
-    logit P(idade) = b0 + b1 * max(0, idade - k) / 30,   com b1 <= 0
+- **v2 (produto)**: faixas de idade de 15 dias, regressão isotônica não crescente (PAVA) e interpolação linear
+  entre os pontos médios. A chance é monotonicamente não crescente **desde o dia 0**. Cada corte T treina só com
+  as fotos mensais da **mesma fase do trimestre** que T (mês 1, 2 ou 3), todas com S + H <= T. Se a fase não tem
+  nenhuma foto elegível, cai para todas as fotos elegíveis e marca `fallback` na curva.
+- **v1 ("platô + queda")**: logit P(idade) = b0 + b1 * max(0, idade - k) / 30, com b1 <= 0. Constante antes do
+  joelho k, o que contradiz a taxa observada (50%, 34%, 7% e 0% por faixa de idade no corte de 30/09/2017).
 
-O joelho k é aprendido (menor NLL numa grade); P > 0 em qualquer idade.
-Tudo (curva, limite de Limpe, escala do score) é ajustado por corte, só com `features.as_of(T)`.
+Limiares das listas, a partir da curva (v2): Foque até a idade em que a chance ainda é pelo menos metade da de
+um deal novo; Limpe quando a chance cai abaixo de `config.LIMPE_MIN_CHANCE` ou a idade passa do maior ciclo já
+ganho até T; Reative é o que fica entre os dois.
+
+Tudo (curva, limiares, escala do score) é ajustado por corte, só com `features.as_of(T)`.
 O vendedor não entra em nenhuma função deste módulo.
 """
 
@@ -23,14 +31,16 @@ from scipy.special import expit
 from . import config, features
 
 __all__ = [
-    "AgeCurve", "FitConfig", "LogisticFit", "ScoreModel", "age_design", "fit_age_curve", "fit_logistic",
-    "fit_model", "limpe_limit", "order_for_list", "score_deals", "score_from_ev",
+    "AgeCurve", "BinnedCurve", "FitConfig", "LogisticFit", "PhaseCurve", "ScoreModel", "age_design",
+    "fit_age_curve", "fit_binned_curve", "fit_logistic", "fit_model", "limpe_limit", "order_for_list",
+    "pava_nonincreasing", "score_deals", "score_from_ev",
 ]
 
 CATEGORY_ORDER = config.CATEGORIES
-AGE_SCALE_DAYS = 30  # a inclinação b1 é "por 30 dias depois do joelho"
+AGE_SCALE_DAYS = 30  # a inclinação b1 da v1 é "por 30 dias depois do joelho"
 TIE_TOLERANCE = 1e-6  # diferença de NLL abaixo da qual dois joelhos empatam (vence o menor)
 NULLABLE_INT_COLUMNS = ("age_days", "score", "days_to_knot", "days_to_limpe")  # inteiros com nulo (Qualifique)
+CURVE_V1, CURVE_V2 = "v1", "v2"
 
 
 @dataclass(frozen=True)
@@ -40,6 +50,10 @@ class FitConfig:
     horizon_days: int = config.HORIZON_DAYS
     first_snapshot: str = config.FIRST_SNAPSHOT
     knot_grid: tuple[int, ...] = tuple(config.KNOT_GRID)
+    curve: str = CURVE_V2  # "v2" (produto) ou "v1" (platô, para comparação)
+    bin_days: int = config.ADJUST_BIN_DAYS
+    pseudo_count: float = config.V2_PSEUDO_COUNT
+    phase: int | None = None  # só auditoria: força a fase do trimestre (padrão: a de T)
 
 
 @dataclass(frozen=True)
@@ -50,9 +64,12 @@ class LogisticFit:
     nll: float
 
 
+# --- Curva v1: platô + queda ------------------------------------------------------------------------
+
+
 @dataclass(frozen=True)
 class AgeCurve:
-    """Curva de chance por idade ajustada, mais o que ela viu no treino."""
+    """Curva v1 ("platô + queda") ajustada, mais o que ela viu no treino."""
 
     knot_days: int
     intercept: float
@@ -82,24 +99,130 @@ class AgeCurve:
         return AGE_SCALE_DAYS * (math.log(half / (1 - half)) - self.intercept) / self.slope_per_30d
 
 
+# --- Curva v2: faixas isotônicas --------------------------------------------------------------------
+
+
+def pava_nonincreasing(values, weights) -> np.ndarray:
+    """Regressão isotônica não crescente por PAVA (blocos adjacentes que sobem são fundidos pela média ponderada)."""
+    blocks: list[list[float]] = []  # [média, peso, quantos]
+    for value, weight in zip(values, weights):
+        blocks.append([float(value), float(weight), 1])
+        while len(blocks) > 1 and blocks[-2][0] < blocks[-1][0]:
+            m2, w2, c2 = blocks.pop()
+            m1, w1, c1 = blocks.pop()
+            blocks.append([(m1 * w1 + m2 * w2) / (w1 + w2), w1 + w2, c1 + c2])
+    out: list[float] = []
+    for mean, _, count in blocks:
+        out += [mean] * int(count)
+    return np.asarray(out)
+
+
+@dataclass(frozen=True)
+class BinnedCurve:
+    """Chance por idade em faixas, interpolada linearmente entre os pontos médios das faixas."""
+
+    midpoints: tuple[float, ...]
+    rates: tuple[float, ...]  # não crescente (PAVA); com `alpha` > 0, também suavizada rumo à taxa base
+    counts: tuple[int, ...]
+    base_rate: float
+
+    def p_win(self, age):
+        age_arr = np.asarray(age, dtype="float64")
+        p = np.interp(age_arr, self.midpoints, self.rates)
+        return float(p) if p.ndim == 0 else p
+
+
+def fit_binned_curve(
+    age, y, width: int = config.ADJUST_BIN_DAYS, alpha: float = config.ADJUST_PSEUDO_COUNT
+) -> BinnedCurve:
+    """Faixas de `width` dias; taxa = (ganhos + alpha*base)/(n + alpha); PAVA com pesos n + alpha.
+
+    Com alpha = 0 é a regressão isotônica pura (taxa observada, pesos n). Faixas sem nenhum caso são descartadas
+    (a interpolação passa por cima delas).
+    """
+    age = np.asarray(age, dtype="float64")
+    y = np.asarray(y, dtype="float64")
+    base = float(y.mean())
+    idx = (age // width).astype(int)
+    size = int(idx.max()) + 1
+    n = np.bincount(idx, minlength=size)
+    wins = np.bincount(idx, weights=y, minlength=size)
+    keep = n > 0
+    rate = (wins[keep] + alpha * base) / (n[keep] + alpha)
+    iso = pava_nonincreasing(rate, n[keep] + alpha)
+    mids = (np.arange(size) * width + width / 2)[keep]
+    return BinnedCurve(tuple(float(m) for m in mids), tuple(float(r) for r in iso), tuple(int(c) for c in n[keep]), base)
+
+
+def last_age_at_or_above(p_win, level: float, max_age: int = config.AGE_SCAN_MAX_DAYS) -> int:
+    """Maior idade inteira (0 a `max_age`) em que a chance ainda é >= `level`; -1 se nem a idade 0 chega lá.
+
+    A curva é não crescente, então todas as idades até essa também estão acima de `level`.
+    """
+    ages = np.arange(0, max_age + 1)
+    ok = np.asarray(p_win(ages)) >= level
+    return int(ages[ok].max()) if ok.any() else -1
+
+
+@dataclass(frozen=True)
+class PhaseCurve:
+    """Curva v2: faixas isotônicas treinadas com as fotos de uma fase do trimestre."""
+
+    binned: BinnedCurve
+    phase: int  # mês do trimestre das fotos de treino (1, 2 ou 3)
+    knot_days: int  # última idade em que a chance ainda é >= metade da de um deal novo (fim do Foque)
+    train_rows: int
+    train_snapshots: tuple[str, ...]
+    fallback: bool = False  # True: a fase não tinha foto elegível e o ajuste usou todas as fotos
+
+    def p_win(self, age):
+        return self.binned.p_win(age)
+
+    @property
+    def p_fresh(self) -> float:
+        """Chance de um deal novo (idade 0)."""
+        return float(self.binned.p_win(0))
+
+    @property
+    def base_rate(self) -> float:
+        return self.binned.base_rate
+
+    @property
+    def halving_days(self) -> None:
+        return None
+
+
 @dataclass(frozen=True)
 class ScoreModel:
     """Tudo o que `score_deals` e `explain` precisam, ajustado com dados até `as_of_date`."""
 
-    curve: AgeCurve
-    limpe_after_days: int  # maior ciclo já ganho (nunca menor que o joelho)
+    curve: AgeCurve | PhaseCurve
+    limpe_after_days: int  # fim do Reative: depois disso o deal é Limpe (nunca menor que o fim do Foque)
     price_min: float  # menor preço de tabela do catálogo
     price_max: float  # maior preço de tabela do catálogo
     as_of_date: str
     horizon_days: int = config.HORIZON_DAYS
+    max_won_cycle_days: int | None = None  # maior ciclo já ganho até a data do modelo
+
+    @property
+    def version(self) -> str:
+        return CURVE_V1 if isinstance(self.curve, AgeCurve) else CURVE_V2
 
     @property
     def knot_days(self) -> int:
+        """Último dia do Foque: v2, chance >= metade da de um deal novo; v1, joelho do platô."""
         return self.curve.knot_days
 
     @property
     def p_fresh(self) -> float:
         return self.curve.p_fresh
+
+    @property
+    def limpe_rule(self) -> str:
+        """'chance' se o Limpe começa porque a chance cai abaixo do mínimo; 'ciclo' se pelo maior ciclo já ganho."""
+        if self.max_won_cycle_days is None or self.limpe_after_days >= self.max_won_cycle_days:
+            return "ciclo"
+        return "chance"
 
     @property
     def ev_min(self) -> float:
@@ -112,7 +235,7 @@ class ScoreModel:
         return self.p_fresh * self.price_max
 
 
-# --- Logística com gradiente analítico -----------------------------------------------------------
+# --- Logística com gradiente analítico (v1) -------------------------------------------------------
 
 
 def fit_logistic(X, y, l2: float = 0.0, bounds=None) -> LogisticFit:
@@ -142,7 +265,7 @@ def fit_logistic(X, y, l2: float = 0.0, bounds=None) -> LogisticFit:
 
 
 def age_design(age: np.ndarray, knot: int) -> np.ndarray:
-    """Matriz de desenho da curva: coluna de 1 (intercepto) e max(0, idade - joelho) / 30."""
+    """Matriz de desenho da v1: coluna de 1 (intercepto) e max(0, idade - joelho) / 30."""
     return np.column_stack([np.ones(len(age)), np.maximum(0.0, age - knot) / AGE_SCALE_DAYS])
 
 
@@ -161,8 +284,43 @@ def fit_age_curve(age, y, knot_grid=config.KNOT_GRID) -> tuple[int, LogisticFit]
 
 
 def limpe_limit(won_cycles: pd.Series, knot: int) -> int:
-    """Dias de idade a partir dos quais o deal é Limpe: o maior ciclo já ganho, nunca menor que o joelho."""
+    """Dias de idade a partir dos quais o deal é Limpe (v1): o maior ciclo já ganho, nunca menor que o joelho."""
     return max(int(won_cycles.max()), knot)
+
+
+def limpe_limit_v2(chance_limit: int, max_won_cycle: int, knot: int) -> int:
+    """Último dia do Reative (v2): o primeiro limite que chegar (chance abaixo do mínimo ou maior ciclo ganho), nunca antes do Foque."""
+    return max(min(chance_limit, max_won_cycle), knot)
+
+
+def _fit_v1(train: pd.DataFrame, cfg: FitConfig) -> AgeCurve:
+    knot, fit = fit_age_curve(train["age_days"], train["y"], cfg.knot_grid)
+    return AgeCurve(
+        knot_days=knot,
+        intercept=fit.coef[0],
+        slope_per_30d=fit.coef[1],
+        base_rate=float(train["y"].mean()),
+        train_rows=len(train),
+        train_snapshots=tuple(sorted({d.strftime("%Y-%m-%d") for d in train["snapshot_date"]})),
+    )
+
+
+def _fit_v2(train: pd.DataFrame, T: pd.Timestamp, cfg: FitConfig) -> PhaseCurve:
+    """Faixas isotônicas com as fotos da mesma fase do trimestre que T; sem foto da fase, usa todas (`fallback`)."""
+    phase = cfg.phase or features.quarter_phase(T)
+    same = features.same_phase(train, phase)
+    fallback = same.empty
+    used = train if fallback else same
+    binned = fit_binned_curve(used["age_days"], used["y"], cfg.bin_days, cfg.pseudo_count)
+    knot = last_age_at_or_above(binned.p_win, config.FOQUE_HALF_FRACTION * float(binned.p_win(0)))
+    return PhaseCurve(
+        binned=binned,
+        phase=phase,
+        knot_days=knot,
+        train_rows=len(used),
+        train_snapshots=tuple(sorted({d.strftime("%Y-%m-%d") for d in used["snapshot_date"]})),
+        fallback=bool(fallback),
+    )
 
 
 def fit_model(deals: pd.DataFrame, T, cfg: FitConfig | None = None) -> ScoreModel:
@@ -174,23 +332,25 @@ def fit_model(deals: pd.DataFrame, T, cfg: FitConfig | None = None) -> ScoreMode
     if train.empty:
         raise ValueError(f"sem fotos de treino para T={T.date()} (horizonte {cfg.horizon_days} dias)")
 
-    knot, fit = fit_age_curve(train["age_days"], train["y"], cfg.knot_grid)
-    curve = AgeCurve(
-        knot_days=knot,
-        intercept=fit.coef[0],
-        slope_per_30d=fit.coef[1],
-        base_rate=float(train["y"].mean()),
-        train_rows=len(train),
-        train_snapshots=tuple(sorted({d.strftime("%Y-%m-%d") for d in train["snapshot_date"]})),
-    )
     won_cycles = view.loc[view["deal_stage"] == "Won", "cycle_days"]  # só ganhos fechados até T
+    max_cycle = int(won_cycles.max())
+    if cfg.curve == CURVE_V1:
+        curve = _fit_v1(train, cfg)
+        limpe = limpe_limit(won_cycles, curve.knot_days)
+    elif cfg.curve == CURVE_V2:
+        curve = _fit_v2(train, T, cfg)
+        chance_limit = last_age_at_or_above(curve.p_win, config.LIMPE_MIN_CHANCE)
+        limpe = limpe_limit_v2(chance_limit, max_cycle, curve.knot_days)
+    else:
+        raise ValueError(f"curva desconhecida: {cfg.curve}")
     return ScoreModel(
         curve=curve,
-        limpe_after_days=limpe_limit(won_cycles, knot),
+        limpe_after_days=limpe,
         price_min=float(deals["sales_price"].min()),
         price_max=float(deals["sales_price"].max()),
         as_of_date=T.strftime("%Y-%m-%d"),
         horizon_days=cfg.horizon_days,
+        max_won_cycle_days=max_cycle,
     )
 
 
@@ -251,14 +411,26 @@ def score_deals(deals: pd.DataFrame, T, model: ScoreModel, include_prospecting: 
 
 
 def main(argv=None) -> int:
-    """`python -m scorer.score`: parâmetros do modelo em cada corte e contagem das listas na data de referência."""
+    """`python -m scorer.score`: parâmetros do modelo em cada corte (v2 e v1) e contagem das listas na data de referência."""
     from . import clean, fmt  # só a linha de comando precisa deles
 
     sys.stdout.reconfigure(encoding="utf-8")
     deals = clean.load_deals()
-    print("corte       joelho  chance nova  inclinação/30d  meia-vida  limpe  fotos  linhas  taxa base")
-    for T in [*config.BACKTEST_CUTS, config.DEFAULT_REFERENCE_DATE]:
+    cuts = [*config.BACKTEST_CUTS, config.DEFAULT_REFERENCE_DATE]
+    print("curva v2 (faixas isotônicas, fotos da mesma fase do trimestre)")
+    print("corte       fase  chance nova  fim do Foque  fim do Reative  regra     fotos  linhas  taxa base")
+    for T in cuts:
         model = fit_model(deals, T)
+        curve = model.curve
+        print(
+            f"{T}  {curve.phase:>4}  {fmt.fmt_pct(model.p_fresh, 1):>11}  {model.knot_days:>12}  "
+            f"{model.limpe_after_days:>14}  {model.limpe_rule:<8}  {len(curve.train_snapshots):>5}  "
+            f"{fmt.fmt_int(curve.train_rows):>6}  {fmt.fmt_pct(curve.base_rate, 1):>9}"
+        )
+    print("\ncurva v1 (platô + queda, todas as fotos)")
+    print("corte       joelho  chance nova  inclinação/30d  meia-vida  limpe  fotos  linhas  taxa base")
+    for T in cuts:
+        model = fit_model(deals, T, FitConfig(curve=CURVE_V1))
         curve = model.curve
         print(
             f"{T}  {model.knot_days:>6}  {fmt.fmt_pct(model.p_fresh, 1):>11}  {fmt.fmt_dec(curve.slope_per_30d, 2):>14}  "
@@ -266,11 +438,12 @@ def main(argv=None) -> int:
             f"{fmt.fmt_int(curve.train_rows):>6}  {fmt.fmt_pct(curve.base_rate, 1):>9}"
         )
     today = config.DEFAULT_REFERENCE_DATE
-    scored = score_deals(deals, today, fit_model(deals, today), include_prospecting=True)
-    print(f"\nlistas em {fmt.fmt_date(today)}:")
-    for category in CATEGORY_ORDER:
-        part = scored[scored["category"] == category]
-        print(f"  {category:<11}{fmt.fmt_int(len(part)):>6}  tabela {fmt.fmt_usd(part['sales_price'].sum())}")
+    for label, cfg in (("v2", FitConfig()), ("v1", FitConfig(curve=CURVE_V1))):
+        scored = score_deals(deals, today, fit_model(deals, today, cfg), include_prospecting=True)
+        print(f"\nlistas em {fmt.fmt_date(today)} ({label}):")
+        for category in CATEGORY_ORDER:
+            part = scored[scored["category"] == category]
+            print(f"  {category:<11}{fmt.fmt_int(len(part)):>6}  tabela {fmt.fmt_usd(part['sales_price'].sum())}")
     return 0
 
 

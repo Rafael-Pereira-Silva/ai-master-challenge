@@ -396,7 +396,8 @@ def backtest():
 
 
 def test_json_has_four_cuts_and_all_top_level_keys(backtest):
-    for key in ("config", "criterion", "headline", "cuts", "media_cortes", "sensibilidade_2017-02-28", "auditoria", "atributos", "hoje"):
+    for key in ("config", "criterion", "headline", "cuts", "cuts_v1", "media_cortes", "media_cortes_v1", "intra_foque", "diagnostico_fases",
+                "sensibilidade_2017-02-28", "sensibilidade_pseudo_contagem", "auditoria", "atributos", "hoje", "hoje_v1"):
         assert key in backtest
     assert [c["cut"] for c in backtest["cuts"]] == config.BACKTEST_CUTS
     assert isinstance(backtest["criterion"]["passed"], bool)
@@ -445,8 +446,14 @@ def test_today_counts_match_the_facts(backtest):
     facts = load_facts()
     faixas = facts["idade_hoje"]["faixas"]
     hoje = backtest["hoje"]
-    assert hoje["categorias"]["Limpe"]["n"] == faixas["acima_do_ciclo_maximo"]["n"]
-    assert hoje["categorias"]["Limpe"]["valor_tabela"] == faixas["acima_do_ciclo_maximo"]["valor_tabela"]
+    # a curva v1 (limite de Limpe = maior ciclo) reproduz os fatos; a v2 acrescenta ao Limpe o que a chance já tirou do jogo
+    old = backtest["hoje_v1"]
+    assert old["categorias"]["Limpe"]["n"] == faixas["acima_do_ciclo_maximo"]["n"]
+    assert old["categorias"]["Limpe"]["valor_tabela"] == faixas["acima_do_ciclo_maximo"]["valor_tabela"]
+    detail = hoje["limpe_detalhe"]
+    assert detail["acima_do_maior_ciclo"]["n"] == faixas["acima_do_ciclo_maximo"]["n"]
+    assert detail["acima_do_maior_ciclo"]["n"] + detail["so_pela_chance"]["n"] == hoje["categorias"]["Limpe"]["n"]
+    assert hoje["categorias"]["Limpe"]["n"] >= faixas["acima_do_ciclo_maximo"]["n"]
     assert hoje["categorias"]["Qualifique"]["n"] == facts["prospecting"]["n"]
     # as faixas fixas do briefing batem com os fatos
     assert hoje["faixas_fixas_do_briefing"]["ate_90"] == faixas["ate_limite_fresco"]["n"]
@@ -464,3 +471,87 @@ def test_how_it_works_line_5_uses_the_headline_from_the_json(backtest, deals):
     for key in ("receita_score", "receita_valor", "receita_recencia"):
         assert fmt_pct(head[key], 0) in lines[4]
     assert "Vendedor não entra no score." in lines[4]
+
+# --- Correção após revisão do Rafael: curva v2, v1 ao lado, ordem dentro do Foque ---------------------
+
+
+def test_v2_is_the_reported_curve_and_v1_sits_beside_it(backtest):
+    assert all(c["curva"] == "v2" and c["modelo"]["versao"] == "v2" for c in backtest["cuts"])
+    assert all(c["curva"] == "plateau" and c["modelo"]["versao"] == "v1" for c in backtest["cuts_v1"])
+    crit = backtest["criterion"]
+    assert crit["final_curve"] == "v2" and crit["post_backtest_change"] is True and set(crit["runs"]) == {"v1", "v2"}
+    assert crit["passed"] == crit["runs"]["v2"]["passed"] and crit["v1_passed"] == crit["runs"]["v1"]["passed"]
+    assert validate.check_criterion(backtest["cuts_v1"])["passed"] == crit["v1_passed"]
+    for new, old in zip(backtest["cuts"], backtest["cuts_v1"]):
+        for method in ("valor", "recencia"):  # mesmos deals e mesmos baselines nas duas curvas
+            assert new["metodos"][method] == old["metodos"][method]
+        assert new["populacao"] == old["populacao"]
+
+
+def test_headline_is_the_v2_average(backtest):
+    mean = np.mean([c["metodos"]["score"]["receita_top20"] for c in backtest["cuts"]])
+    old = np.mean([c["metodos"]["score"]["receita_top20"] for c in backtest["cuts_v1"]])
+    assert backtest["headline"]["receita_score"] == pytest.approx(mean)
+    assert backtest["headline_v1"]["receita_score"] == pytest.approx(old)
+
+
+def _toy_cut(ages, prices, y, p_fn):
+    import types
+
+    ages, prices, y = np.asarray(ages, float), np.asarray(prices, float), np.asarray(y)
+    pop = pd.DataFrame({
+        "opportunity_id": [f"D{i}" for i in range(len(ages))], "age_days": ages, "sales_price": prices, "y": y,
+        "gain": y * prices,
+    })
+    return types.SimpleNamespace(T=pd.Timestamp("2017-09-30"), pop=pop, p_fn=p_fn)
+
+
+def test_intra_foque_metric_uses_the_same_population_for_every_method():
+    ages = [10, 20, 30, 95, 200]
+    prices = [100, 100, 100, 100, 100]
+    y = [1, 0, 0, 1, 0]  # o ganho de 95 dias fica fora da população (idade > 90)
+    v2 = _toy_cut(ages, prices, y, lambda a: 1 - np.asarray(a) / 400)
+    v1 = _toy_cut(ages, prices, y, lambda a: np.full(len(np.atleast_1d(a)), 0.5))
+    out = validate._intra_foque(v1, v2)
+    assert out["n"] == 3 and out["ganhos"] == 1 and out["receita_ganha"] == 100
+    m = out["metodos"]
+    assert m["score_v2"]["auc"] == 1.0 and m["score_v2"]["receita_top20"] == pytest.approx(0.6)  # K = 20% de 3 deals = 0,6 deal: o topo é o único ganho
+    assert m["recencia"]["auc"] == 1.0
+    assert m["score_v1"]["auc"] == 0.5 and m["valor"]["auc"] == 0.5  # empate total: nenhuma informação
+    assert m["score_v1"]["receita_top20"] == pytest.approx(0.2) and m["valor"]["receita_top20"] == pytest.approx(0.2)
+    assert set(m) == {"score_v2", "score_v1", "valor", "recencia", "aleatorio"}
+
+
+def test_intra_foque_metric_ranks_by_expected_value_not_by_age_alone():
+    ages = [5, 80]
+    prices = [100, 10000]
+    y = [0, 1]  # o deal velho e caro é o que ganha
+    v2 = _toy_cut(ages, prices, y, lambda a: np.where(np.asarray(a) < 50, 0.5, 0.2))
+    v1 = _toy_cut(ages, prices, y, lambda a: np.full(len(np.atleast_1d(a)), 0.5))
+    out = validate._intra_foque(v1, v2)
+    assert out["metodos"]["score_v2"]["auc"] == 1.0 and out["metodos"]["recencia"]["auc"] == 0.0
+
+
+def test_intra_foque_in_the_json_covers_all_cuts_and_methods(backtest, deals):
+    intra = backtest["intra_foque"]
+    assert intra["idade_max"] == config.INTRA_FOQUE_MAX_AGE and len(intra["por_corte"]) == 4
+    for c in intra["por_corte"]:
+        pop = validate._build_cut(deals, c["cut"]).pop
+        assert c["n"] == int((pop["age_days"] <= config.INTRA_FOQUE_MAX_AGE).sum())
+        assert set(c["metodos"]) == {"score_v2", "score_v1", "valor", "recencia", "aleatorio"}
+        assert all(set(v) == {"auc", "receita_top20"} for v in c["metodos"].values())
+    for method, values in intra["media"].items():
+        assert values["auc"] == pytest.approx(np.mean([c["metodos"][method]["auc"] for c in intra["por_corte"]]))
+
+
+def test_diagnostic_by_phase_is_consistent(backtest):
+    diag = backtest["diagnostico_fases"]
+    groups = diag["grupos"]
+    assert groups["fim_de_trimestre"]["fotos"] == ["2017-03-31", "2017-06-30", "2017-09-30"]
+    assert groups["fim_de_trimestre"]["linhas"] + groups["meio_de_trimestre"]["linhas"] == groups["todas"]["linhas"]
+    for i, band in enumerate(groups["todas"]["por_faixa"]):
+        parts = [groups[g]["por_faixa"][i] for g in ("fim_de_trimestre", "meio_de_trimestre")]
+        assert band["n"] == sum(p["n"] for p in parts) and band["ganhos"] == sum(p["ganhos"] for p in parts)
+    first, last = groups["fim_de_trimestre"]["por_faixa"][0], groups["fim_de_trimestre"]["por_faixa"][2]
+    assert first["taxa_ganho_90d"] > 0.4 and last["taxa_ganho_90d"] < 0.2  # o padrão de fim de trimestre, que o platô escondia
+    assert sum(diag["fases"][p]["linhas"] for p in "123") == groups["todas"]["linhas"]

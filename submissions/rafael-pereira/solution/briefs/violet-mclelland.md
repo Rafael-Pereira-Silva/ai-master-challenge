@@ -2,37 +2,32 @@
 
 Manager: Cara Losch · Região: East
 
-**Esta semana: foque em 8 deals, reative 9 antes que esfriem e limpe 51 do CRM (US$ 67.544 parados).**
+**Esta semana: foque em 6 deals, reative 2 antes que esfriem e limpe 60 do CRM (US$ 78.174 parados).**
 
 ## 3 para focar
 
-8 deals em Foque; estes são os 3 de maior valor esperado.
+6 deals em Foque; estes são os 3 de maior valor esperado.
 
-1. **Conta não informada** · GTX Plus Basic · US$ 1.096 de tabela · aberto há 76 dias · score 49
-   - GTX Plus Basic: US$ 1.096 de tabela, valor esperado US$ 437; janela boa por mais 19 dias.
-   - A chance só começa a cair depois de 95 dias de idade.
-2. **Conta não informada** · GTX Basic · US$ 550 de tabela · aberto há 76 dias · score 39
-   - GTX Basic: US$ 550 de tabela, valor esperado US$ 219; janela boa por mais 19 dias.
-   - A chance só começa a cair depois de 95 dias de idade.
-3. **Conta não informada** · MG Special · US$ 55 de tabela · aberto há 60 dias · score 11
-   - MG Special: US$ 55 de tabela, valor esperado US$ 22; janela boa por mais 35 dias.
-   - A chance só começa a cair depois de 95 dias de idade.
+1. **Conta não informada** · MG Special · US$ 55 de tabela · aberto há 14 dias · score 11
+   - Deals com 14 dias fecharam 50% das vezes, o mesmo que os novos.
+   - Faltam 47 dias para a chance cair à metade da de um deal novo e o deal sair do Foque.
+2. **Conta não informada** · MG Special · US$ 55 de tabela · aberto há 26 dias · score 11
+   - Deals com 26 dias fecharam 49% das vezes; os novos, 50%.
+   - Faltam 35 dias para a chance cair à metade da de um deal novo e o deal sair do Foque.
+3. **Kan-code** · MG Special · US$ 55 de tabela · aberto há 38 dias · score 11
+   - Deals com 38 dias fecharam 48% das vezes; os novos, 50%.
+   - Faltam 23 dias para a chance cair à metade da de um deal novo e o deal sair do Foque.
 
-## 3 para reativar
+## 2 para reativar
 
-9 deals em Reative; estes são os 3 de maior valor esperado.
+1. **Conta não informada** · GTX Plus Basic · US$ 1.096 de tabela · aberto há 76 dias · score 32
+   - Deals com 76 dias fecharam 15% das vezes; os novos, 50%.
+   - Depois de 95 dias aberto a chance de ganho cai abaixo de 2% — faltam 19 dias. Fale com o cliente esta semana.
+2. **Conta não informada** · GTX Basic · US$ 550 de tabela · aberto há 76 dias · score 23
+   - Deals com 76 dias fecharam 15% das vezes; os novos, 50%.
+   - Depois de 95 dias aberto a chance de ganho cai abaixo de 2% — faltam 19 dias. Fale com o cliente esta semana.
 
-1. **Conta não informada** · MG Advanced · US$ 3.393 de tabela · aberto há 110 dias · score 52
-   - Aberto há 110 dias: a chance de ganho em 90 dias caiu de 40% (deal novo) para 15%.
-   - Nenhum deal foi ganho depois de 138 dias aberto — faltam 28 dias. Fale com o cliente esta semana.
-2. **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 130 dias · score 33
-   - Aberto há 130 dias: a chance de ganho em 90 dias caiu de 40% (deal novo) para 3%.
-   - Nenhum deal foi ganho depois de 138 dias aberto — faltam 8 dias. Fale com o cliente esta semana.
-3. **Conta não informada** · GTX Plus Basic · US$ 1.096 de tabela · aberto há 118 dias · score 27
-   - Aberto há 118 dias: a chance de ganho em 90 dias caiu de 40% (deal novo) para 8%.
-   - Nenhum deal foi ganho depois de 138 dias aberto — faltam 20 dias. Fale com o cliente esta semana.
-
-## Limpe: 51 deals (US$ 67.544 de tabela)
+## Limpe: 60 deals (US$ 78.174 de tabela)
 
 Os 5 de maior valor:
 
@@ -40,7 +35,7 @@ Os 5 de maior valor:
 - **Goodsilron** · GTX Pro · US$ 4.821 de tabela · aberto há 313 dias · score 0
 - **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 284 dias · score 0
 - **Zathunicon** · GTX Pro · US$ 4.821 de tabela · aberto há 212 dias · score 0
-- **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 187 dias · score 1
+- **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 187 dias · score 0
 
 ## Qualifique
 

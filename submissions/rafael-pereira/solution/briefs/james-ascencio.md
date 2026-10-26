@@ -2,37 +2,30 @@
 
 Manager: Summer Sewald · Região: West
 
-**Esta semana: foque em 5 deals, reative 9 antes que esfriem e limpe 47 do CRM (US$ 134.192 parados).**
+**Esta semana: foque em 2 deals, reative 3 antes que esfriem e limpe 56 do CRM (US$ 166.128 parados).**
 
-## 3 para focar
+## 2 para focar
 
-5 deals em Foque; estes são os 3 de maior valor esperado.
-
-1. **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 92 dias · score 75
-   - GTX Plus Pro: US$ 5.482 de tabela, valor esperado US$ 2.187; janela boa por mais 3 dias.
-   - A chance só começa a cair depois de 95 dias de idade.
-2. **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 73 dias · score 75
-   - GTX Plus Pro: US$ 5.482 de tabela, valor esperado US$ 2.187; janela boa por mais 22 dias.
-   - A chance só começa a cair depois de 95 dias de idade.
-3. **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 56 dias · score 75
-   - GTX Plus Pro: US$ 5.482 de tabela, valor esperado US$ 2.187; janela boa por mais 39 dias.
-   - A chance só começa a cair depois de 95 dias de idade.
+1. **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 56 dias · score 67
+   - Deals com 56 dias fecharam 32% das vezes; os novos, 50%.
+   - Faltam 5 dias para a chance cair à metade da de um deal novo e o deal sair do Foque.
+2. **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 61 dias · score 62
+   - Deals com 61 dias fecharam 26% das vezes; os novos, 50%.
+   - Hoje é o último dia no Foque: depois disso a chance fica abaixo da metade da de um deal novo.
 
 ## 3 para reativar
 
-9 deals em Reative; estes são os 3 de maior valor esperado.
+1. **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 73 dias · score 57
+   - Deals com 73 dias fecharam 16% das vezes; os novos, 50%.
+   - Depois de 95 dias aberto a chance de ganho cai abaixo de 2% — faltam 22 dias. Fale com o cliente esta semana.
+2. **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 92 dias · score 38
+   - Deals com 92 dias fecharam 5% das vezes; os novos, 50%.
+   - Depois de 95 dias aberto a chance de ganho cai abaixo de 2% — faltam 3 dias. Fale com o cliente esta semana.
+3. **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 95 dias · score 26
+   - Deals com 95 dias fecharam 2% das vezes; os novos, 50%.
+   - Hoje é o último dia: depois de 95 dias aberto a chance de ganho cai abaixo de 2%. Fale com o cliente hoje.
 
-1. **Conta não informada** · MG Advanced · US$ 3.393 de tabela · aberto há 104 dias · score 58
-   - Aberto há 104 dias: a chance de ganho em 90 dias caiu de 40% (deal novo) para 23%.
-   - Nenhum deal foi ganho depois de 138 dias aberto — faltam 34 dias. Fale com o cliente esta semana.
-2. **Conta não informada** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 111 dias · score 58
-   - Aberto há 111 dias: a chance de ganho em 90 dias caiu de 40% (deal novo) para 14%.
-   - Nenhum deal foi ganho depois de 138 dias aberto — faltam 27 dias. Fale com o cliente esta semana.
-3. **Conta não informada** · GTX Pro · US$ 4.821 de tabela · aberto há 112 dias · score 55
-   - Aberto há 112 dias: a chance de ganho em 90 dias caiu de 40% (deal novo) para 13%.
-   - Nenhum deal foi ganho depois de 138 dias aberto — faltam 26 dias. Fale com o cliente esta semana.
-
-## Limpe: 47 deals (US$ 134.192 de tabela)
+## Limpe: 56 deals (US$ 166.128 de tabela)
 
 Os 5 de maior valor:
 

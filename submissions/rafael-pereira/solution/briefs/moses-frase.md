@@ -16,11 +16,11 @@ Nenhum deal em Reative esta semana.
 
 Os 5 de maior valor:
 
-- **Genco Pura Olive Oil Company** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 164 dias · score 6
-- **Conta não informada** · MG Advanced · US$ 3.393 de tabela · aberto há 162 dias · score 4
-- **Conta não informada** · MG Advanced · US$ 3.393 de tabela · aberto há 162 dias · score 4
-- **Conta não informada** · MG Advanced · US$ 3.393 de tabela · aberto há 162 dias · score 4
-- **Xx-holding** · MG Advanced · US$ 3.393 de tabela · aberto há 159 dias · score 6
+- **Genco Pura Olive Oil Company** · GTX Plus Pro · US$ 5.482 de tabela · aberto há 164 dias · score 0
+- **Conta não informada** · MG Advanced · US$ 3.393 de tabela · aberto há 162 dias · score 0
+- **Conta não informada** · MG Advanced · US$ 3.393 de tabela · aberto há 162 dias · score 0
+- **Conta não informada** · MG Advanced · US$ 3.393 de tabela · aberto há 162 dias · score 0
+- **Xx-holding** · MG Advanced · US$ 3.393 de tabela · aberto há 159 dias · score 0
 
 ## Qualifique: 31 deals (US$ 57.609 de tabela)
 

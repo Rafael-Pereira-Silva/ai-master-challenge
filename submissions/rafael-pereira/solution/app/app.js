@@ -188,8 +188,8 @@
     el.innerHTML = '<div class="wrap banner-in"><p><strong>Modo teste</strong> — o que o score recomendaria em ' +
       dateBR(snap.date) + ' e o que aconteceu até ' + dateBR(D.meta.reference_date) +
       '. Só entra o que se sabia naquela data.</p>' +
-      '<p class="banner-note" data-testid="test-banner-note">Os números de resultado são do time inteiro de propósito: ' +
-      'não mostramos taxa de vitória por vendedor, porque a diferença entre vendedores é compatível com ruído.</p>' +
+      '<p class="banner-note" data-testid="test-banner-note">Os números de resultado seguem os filtros. Com um vendedor escolhido ' +
+      'mostramos contagens, não taxa de vitória: a diferença entre vendedores é compatível com ruído.</p>' +
       '<button type="button" class="btn" id="back-today" data-testid="back-to-today">Voltar para hoje</button></div>';
   }
 
@@ -289,20 +289,34 @@
   });
 
   /* ------------------------------------------------------------------ resultado do modo teste */
-  function renderResults(snap) {
+  // Recalculado a partir dos deals filtrados (abas, frase de ação e resumos usam a mesma lista).
+  // Com um vendedor escolhido não há porcentagem: só contagens (a diferença entre vendedores é compatível com ruído).
+  function outcomeStats(deals) {
+    var won = 0, revenue = 0;
+    deals.forEach(function (d) {
+      if (d.outcome && d.outcome.status === 'Ganho') { won += 1; revenue += d.outcome.close_value || 0; }
+    });
+    return { n: deals.length, won: won, revenue: revenue };
+  }
+  function renderResults(snap, groups) {
     var el = $('results');
     if (!isTest(snap) || !snap.outcome_summary) { el.hidden = true; el.innerHTML = ''; return; }
+    var counts = !!state.vendedor;
     var html = '<h2>O que aconteceu até ' + dateBR(D.meta.reference_date) +
-      ' <span class="muted">(todos os vendedores; os filtros não mudam estes números)</span></h2><div class="results-grid">';
+      ' <span class="muted">(' + esc(scopeText()) + ')</span></h2><div class="results-grid">';
     CATS.forEach(function (c) {
-      var o = snap.outcome_summary[c];
-      if (!o) { return; }
+      if (!snap.outcome_summary[c]) { return; }
+      var o = outcomeStats(groups[c]);
+      var big = counts ? num(o.won) : (o.n ? pct1(o.won / o.n) : '—');
+      var sub = counts
+        ? plural(o.won, 'deal ganho', 'deals ganhos') + ', de ' + num(o.n) + ' ' + plural(o.n, 'deal', 'deals')
+        : 'foram ganhos, de ' + num(o.n) + ' ' + plural(o.n, 'deal', 'deals');
       html += '<div class="res cat-' + c + '" data-testid="backtest-summary-' + c + '" data-n="' + o.n +
-        '" data-pct="' + (o.pct_ganhos * 100).toFixed(1) + '">' +
+        '" data-won="' + o.won + '" data-revenue="' + o.revenue + '"' +
+        (counts || !o.n ? '' : ' data-pct="' + (o.won / o.n * 100).toFixed(1) + '"') + '>' +
         '<span class="res-name">' + c + '</span>' +
-        '<span class="res-pct">' + pct1(o.pct_ganhos) + '</span>' +
-        '<span class="res-sub">foram ganhos, de ' + num(o.n) + ' ' + plural(o.n, 'deal', 'deals') +
-        ' · ' + usd(o.receita_ganha) + ' de receita</span></div>';
+        '<span class="res-pct">' + big + '</span>' +
+        '<span class="res-sub">' + sub + ' · ' + usd(o.revenue) + ' de receita</span></div>';
     });
     el.innerHTML = html + '</div>';
     el.hidden = false;
@@ -372,28 +386,25 @@
   var items = [];
   var shown = 0;
 
-  /* Aviso do Foque com idade alta: vem de backtest.notes (calculada do JSON de métricas pelo build). */
-  function foqueWarning() {
-    var notes = (D.backtest && D.backtest.notes) || [];
-    for (var i = 0; i < notes.length; i++) {
-      if (notes[i].indexOf('No Foque, ') === 0) {
-        return ' <span class="foque-warning" data-testid="foque-warning"><strong>Atenção:</strong> ' + esc(notes[i]) + '</span>';
-      }
-    }
-    return '';
-  }
-
   function instruction(cat, m) {
     switch (cat) {
       case 'Foque':
-        return '<strong>Avance</strong> estes deals primeiro: a chance de ganho só começa a cair depois de ' + days(m.knot_days) +
-          ' abertos. Ordem: maior valor esperado (chance × preço de tabela).' + foqueWarning();
+        return '<strong>Avance</strong> estes deals primeiro: até ' + days(m.knot_days) +
+          ' abertos a chance de ganho ainda é pelo menos metade da de um deal novo (' + pct0(m.p_fresh) +
+          '). Ordem: maior valor esperado (chance × preço de tabela).';
       case 'Reative':
-        return '<strong>Fale com o cliente esta semana:</strong> a chance já está caindo, e nenhum deal foi ganho depois de ' +
-          days(m.limpe_after_days) + ' abertos. Ordem: maior valor esperado.';
+        return '<strong>Fale com o cliente esta semana:</strong> a chance já está caindo, ' +
+          (m.limpe_rule === 'chance'
+            ? 'e depois de ' + days(m.limpe_after_days) + ' abertos ela fica abaixo de ' + pct0(m.limpe_min_chance)
+            : 'e nenhum deal foi ganho depois de ' + days(m.limpe_after_days) + ' abertos') +
+          '. Ordem: maior valor esperado.';
       case 'Limpe':
-        return '<strong>Pergunte ao cliente se ainda quer comprar:</strong> se não, marque Lost no CRM; se sim, atualize o deal. Estes deals estão abertos há mais tempo do que qualquer deal já ganho (' +
-          days(m.limpe_after_days) + '). Ordem: maior valor de tabela.';
+        return '<strong>Pergunte ao cliente se ainda quer comprar:</strong> se não, marque Lost no CRM; se sim, atualize o deal. ' +
+          (m.limpe_rule === 'chance'
+            ? 'Estes deals estão abertos há mais de ' + days(m.limpe_after_days) + ': a chance de ganho caiu abaixo de ' + pct0(m.limpe_min_chance) +
+              ' (ou passa do maior ciclo já ganho, ' + days(m.max_won_cycle_days) + ').'
+            : 'Estes deals estão abertos há mais tempo do que qualquer deal já ganho (' + days(m.limpe_after_days) + ').') +
+          ' Ordem: maior valor de tabela.';
       default:
         return '<strong>Marque a primeira conversa ou descarte:</strong> estes deals ainda estão em Prospecting, sem data de engajamento, então não há score. Ordem: maior valor de tabela.';
     }
@@ -424,7 +435,7 @@
 
   function dueText(d) {
     if (d.cat === 'Foque' && d.days_to_knot != null) {
-      return d.days_to_knot === 0 ? 'a chance começa a cair hoje' : 'a chance começa a cair em ' + days(d.days_to_knot);
+      return d.days_to_knot === 0 ? 'último dia no Foque' : 'sai do Foque em ' + days(d.days_to_knot);
     }
     if (d.cat === 'Reative' && d.days_to_limpe != null) {
       return d.days_to_limpe === 0 ? 'último dia antes de virar Limpe' : 'vira Limpe em ' + days(d.days_to_limpe);
@@ -621,7 +632,7 @@
     renderAction(snap, st, list.length);
     renderHint();
     renderTabs(snap, st);
-    renderResults(snap);
+    renderResults(snap, groups);
     renderTeam(snap, list);
     renderPanel(snap, groups, list);
     if (lastHowKey !== snap.date) { renderHow(snap); renderBacktest(snap); lastHowKey = snap.date; }

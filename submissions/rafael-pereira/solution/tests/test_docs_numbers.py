@@ -95,9 +95,9 @@ def test_checker_does_not_confuse_plain_small_numbers_with_facts():
 
 
 @pytest.mark.parametrize("name,old,new", [
-    ("README.md", "61,1%", "93,1%"),
-    ("README.md", "US$ 3,2 mi", "US$ 3,3 mi"),
-    ("README.md", "1.291", "1.292"),
+    ("README.md", "62,5%", "93,5%"),
+    ("README.md", "US$ 3,6 mi", "US$ 9,9 mi"),
+    ("README.md", "1.463", "1.464"),
     ("MODEL_CARD.md", "1.425", "1.426"),
     ("MODEL_CARD.md", "0,996", "0,931"),
 ])
