@@ -135,7 +135,10 @@ A interface desenha três tabelas (receita no top 20%, ganhos no top 20%, AUC), 
 - `people.agents` -> seletor "Quem é você?" (agrupado por manager), "Carteira do time" e estado vazio.
 - `how_it_works` -> `<details data-testid="how-it-works">`, uma `<li>` por linha.
 - `backtest` -> `<details data-testid="backtest-panel">`.
-- Estado da tela no `location.hash` (`URLSearchParams`): `vendedor`, `manager`, `regiao`, `modo` (data do snapshot), `aba` (`Foque`|`Reative`|`Limpe`|`Qualifique`). Nenhum desses vai para o `data.js`.
+- Estado da tela no `location.hash` (`URLSearchParams`): `perfil` (`vendedor`|`manager`|`revops`; sem ele abre a tela de entrada "Quem é você?"), `nome` (o vendedor ou o manager do perfil), `ver` e `pauta` (manager: carteira de um vendedor do time em modo leitura e pauta do 1:1 aberta), `ordem` e `dir` (ordenação do mapa do time), e, na visão completa (`perfil=revops`), `vendedor`, `manager`, `regiao` como filtros; em qualquer perfil, `modo` (data do snapshot) e `aba` (`Foque`|`Reative`|`Limpe`|`Qualifique`). Um endereço antigo com `vendedor=`, `manager=` ou `regiao=` e sem `perfil` abre a visão completa. Nenhum desses vai para o `data.js`.
+- `people.agents` e `people.managers` -> tela de entrada (selects de vendedor e de manager), mapa do time (vendedores do manager) e identidade na barra de perfil.
+- Marcações do vendedor ("contatei", "agendei", "encerrar no CRM") ficam só no `localStorage` do navegador (chave `leadscorer:acoes:v1`), nunca no `data.js`. O tema escolhido fica em `leadscorer:tema` e o último perfil em `leadscorer:perfil:v1`; todo acesso ao armazenamento tem `try/catch`.
+- Nenhum campo novo foi acrescentado ao contrato para as visões por perfil: mapa do time, pauta, progresso e simulador são derivados dos `deals` no navegador. **A separação por perfil é de experiência, não de segurança**: o `data.js` contém todos os deals.
 
 ## 9. Desvios em relação ao plano E6 item 3
 

@@ -124,8 +124,13 @@ class Env:
         self.errors: list[str] = []
 
     @contextlib.contextmanager
-    def page(self, hash_: str = "", width: int = 1280, height: int = 800, collect: bool = True, uri: str | None = None):
-        ctx = self.browser.new_context(viewport={"width": width, "height": height})
+    def page(self, hash_: str = "", width: int = 1280, height: int = 800, collect: bool = True, uri: str | None = None,
+             profile: str | None = "revops", scheme: str | None = None):
+        """Abre a página. Por padrão entra na visão completa (perfil=revops), onde ficam os filtros e a carteira do time
+        que estas checagens exercitam; passe profile=None para abrir a tela de entrada ("Quem é você?")."""
+        if profile and "perfil=" not in hash_:
+            hash_ = f"perfil={profile}" + (f"&{hash_}" if hash_ else "")
+        ctx = self.browser.new_context(viewport={"width": width, "height": height}, color_scheme=scheme or "light")
         page = ctx.new_page()
         if collect:
             page.on("console", lambda m: self.errors.append(f"console.{m.type}: {m.text}") if m.type == "error" else None)
@@ -139,9 +144,12 @@ class Env:
 
 
 def ready(page) -> None:
+    """A página montou: ou a tela de entrada está visível, ou a frase de ação tem texto."""
     page.wait_for_function(
-        "() => { const e = document.querySelector('[data-testid=action-summary]'); return e && e.textContent.trim().length > 0; }",
+        "() => { const en = document.querySelector('#entry'); if (en && !en.hidden) return true;"
+        " const e = document.querySelector('[data-testid=action-summary]'); return !!e && e.textContent.trim().length > 0; }",
         timeout=15000)
+    page.evaluate("document.fonts.ready")
 
 
 def tab_counts(page) -> dict[str, int]:
@@ -278,7 +286,7 @@ def check_hash(env: Env, data: dict):
             if page.input_value("[data-testid=mode-select]") != tests[0]["date"]:
                 fails.append("#modo=... não abriu o snapshot de teste")
             # editar o hash à mão (ou usar um link) também atualiza a tela
-            page.evaluate("location.hash = '#aba=Reative'")
+            page.evaluate("location.hash = '#perfil=revops&aba=Reative'")
             page.wait_for_function("(d) => document.querySelector('[data-testid=mode-select]').value !== d", arg=tests[0]["date"], timeout=5000)
             if active_cat(page) != "Reative":
                 fails.append("mudar o hash à mão não trocou a aba")
@@ -590,7 +598,7 @@ def check_sem_numeros_a_mao(app_dir: Path):
     js = (app_dir / "app.js").read_text(encoding="utf-8")
     text = re.sub(r"<(script|style)\b.*?</\1>", " ", html, flags=re.S | re.I)
     text = re.sub(r"<!--.*?-->", " ", text, flags=re.S)
-    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"<[^>]+>", " ", text).replace("1:1", "")     # "1:1" é o nome do ritual (pauta do 1:1), não um dado
     fails = []
     if re.search(r"\d", text):
         fails.append("dígitos no texto visível do index.html: " + ", ".join(sorted(set(re.findall(r"\S*\d\S*", text)))[:5]))
@@ -604,6 +612,7 @@ def check_sem_numeros_a_mao(app_dir: Path):
         s2 = re.sub(r"&#\d+;", "", s)                      # entidades HTML (&#39;)
         if re.fullmatch(r"[01]", s2):                      # "0"/"1" estruturais (atributos, índices)
             continue
+        s2 = s2.replace("1:1", "")                         # "1:1" é o nome do ritual (pauta do 1:1), não um dado
         if re.search(r"(?<![A-Za-z_-])\d", s2):            # dígito que não faz parte de um nome (l1, l2)
             offenders.append(s2[:50])
     if offenders:
@@ -773,26 +782,60 @@ def _ratio(a: str, b: str) -> float:
     return (la + 0.05) / (lb + 0.05)
 
 
-def check_contraste(app_dir: Path):
-    css = (app_dir / "style.css").read_text(encoding="utf-8")
+def load_tokens(css: str) -> tuple[dict[str, str], dict[str, str]]:
+    """Tokens de cor (#rrggbb) do tema claro (:root) e do escuro (:root[data-theme=dark], já com os do claro por baixo).
+    O bloco do escuro dentro de @media (prefers-color-scheme: dark) tem de ter exatamente os mesmos valores."""
     tok = lambda block: dict(re.findall(r"--([\w-]+):\s*(#[0-9a-fA-F]{6})", block))  # noqa: E731
     light = tok(re.search(r":root \{(.*?)\n\}", css, re.S).group(1))
-    dark = {**light, **tok(re.search(r"prefers-color-scheme: dark\) \{\s*:root \{(.*?)\n  \}", css, re.S).group(1))}
-    pairs = [("text", "bg", 4.5), ("text", "surface", 4.5), ("muted", "bg", 4.5), ("muted", "surface", 4.5), ("focus", "bg", 4.5),
-             ("focus", "surface", 4.5), ("note-text", "note-bg", 4.5), ("bad", "surface", 4.5), ("bad", "bg", 4.5),
-             ("control", "surface", 3.0), ("control", "bg", 3.0)]
+    dark_over = tok(re.search(r':root\[data-theme="dark"\] \{(.*?)\n\}', css, re.S).group(1))
+    media_over = tok(re.search(r'prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="light"\]\) \{(.*?)\n  \}', css, re.S).group(1))
+    if dark_over != media_over:
+        raise AssertionError("o tema escuro explícito e o automático (prefers-color-scheme) têm tokens diferentes")
+    return light, {**light, **dark_over}
+
+
+# (texto ou elemento, fundo, mínimo, onde é usado). 4,5:1 para texto; 3:1 para elementos gráficos.
+def contrast_pairs() -> list[tuple[str, str, float, str]]:
+    pairs = [
+        ("text", "bg", 4.5, "texto da página"), ("text", "surface", 4.5, "texto em cards"), ("text", "soft", 4.5, "texto em fundos suaves"),
+        ("muted", "bg", 4.5, "texto secundário"), ("muted", "surface", 4.5, "texto secundário em cards"), ("muted", "soft", 4.5, "texto secundário em fundos suaves"),
+        ("link", "bg", 4.5, "links"), ("link", "surface", 4.5, "links em cards"),
+        ("focus", "bg", 3.0, "anel de foco na página"), ("focus", "surface", 3.0, "anel de foco em cards"), ("focus-hi", "hero", 3.0, "anel de foco na barra e no resumo"),
+        ("control", "bg", 3.0, "borda de campos"), ("control", "surface", 3.0, "borda de campos e botões"),
+        ("gold-ink", "gold", 4.5, "texto do botão primário"), ("gold", "hero", 3.0, "marca dourada na barra"),
+        ("hero-text", "hero", 4.5, "texto da barra e do resumo"), ("hero-muted", "hero", 4.5, "texto secundário do resumo"),
+        ("hero-accent", "hero", 4.5, "palavra editorial em itálico"),
+        ("inv-text", "inv-bg", 4.5, "botão de ação marcado e etiqueta do perfil"),
+        ("note-text", "note-bg", 4.5, "faixa do modo teste e avisos"), ("note-line", "note-bg", 3.0, "borda dos avisos"),
+        ("bad", "surface", 4.5, "alertas em cards"), ("bad", "bg", 4.5, "alertas na página"),
+        ("limpe-c", "border", 3.0, "barra de higiene sobre a trilha"),
+    ]
     for c in ("foque", "reative", "limpe", "qualifique"):
-        pairs += [(f"{c}-c", "surface", 4.5), (f"{c}-c", "bg", 4.5), (f"{c}-c", f"{c}-t", 4.5), ("text", f"{c}-t", 4.5),
-                  ("muted", f"{c}-t", 4.5), (f"{c}-l", "surface", 3.0)]
-    fails, worst = [], 99.0
-    for name, pal in (("claro", light), ("escuro", dark)):
-        for a, b, need in pairs:
-            if a in pal and b in pal:
-                r = _ratio(pal[a], pal[b])
-                worst = min(worst, r / need)
-                if r < need:
-                    fails.append(f"{name}: {a} em {b} = {r:.2f} (< {need})")
-    return (not fails, "; ".join(fails) or f"{len(pairs)} pares de cor, claro e escuro, todos >= AA")
+        pairs += [(f"{c}-c", "surface", 4.5, f"{c}: texto em cards"), (f"{c}-c", "bg", 4.5, f"{c}: texto na página"),
+                  (f"{c}-c", f"{c}-t", 4.5, f"{c}: texto no fundo suave"), ("text", f"{c}-t", 4.5, f"{c}: texto principal no fundo suave"),
+                  ("muted", f"{c}-t", 4.5, f"{c}: texto secundário no fundo suave"), (f"{c}-l", "surface", 3.0, f"{c}: linha gráfica em cards"),
+                  (f"{c}-l", "bg", 3.0, f"{c}: linha gráfica na página"), (f"{c}-h", "hero", 4.5, f"{c}: número sobre o marinho")]
+    return pairs
+
+
+def contrast_rows(css: str) -> list[tuple[str, str, str, float, float, float, str]]:
+    """Linhas (a, b, onde, mínimo, razão no claro, razão no escuro, falha)."""
+    light, dark = load_tokens(css)
+    rows = []
+    for a, b, need, where in contrast_pairs():
+        for pal in (light, dark):
+            if a not in pal or b not in pal:
+                raise KeyError(f"token ausente no CSS: {a} ou {b}")
+        rl, rd = _ratio(light[a], light[b]), _ratio(dark[a], dark[b])
+        rows.append((a, b, where, need, rl, rd, "" if min(rl, rd) >= need else "FALHA"))
+    return rows
+
+
+def check_contraste(app_dir: Path):
+    css = (app_dir / "style.css").read_text(encoding="utf-8")
+    rows = contrast_rows(css)
+    fails = [f"{a} em {b}: claro {rl:.2f}, escuro {rd:.2f} (< {need})" for a, b, _, need, rl, rd, bad in rows if bad]
+    return (not fails, "; ".join(fails) or f"{len(rows)} pares de cor, claro e escuro, todos >= AA")
 
 
 def check_sem_dados(env: Env, app_dir: Path):
@@ -950,15 +993,15 @@ def numbers_c(env: Env, data: dict, sol: Path):
 # ---------------------------------------------------------------------------------------------
 # layout + screenshots
 # ---------------------------------------------------------------------------------------------
-def layout_problems(page, width: int, height: int, label: str, above_fold: bool = False) -> list[str]:
+def layout_problems(page, width: int, height: int, label: str, above_fold: bool = False, fold_testid: str = "action-summary") -> list[str]:
     out = []
     sw = page.evaluate("document.documentElement.scrollWidth")
     if sw > width:
         out.append(f"{label}@{width}: rolagem horizontal (scrollWidth {sw} > {width})")
     if above_fold:
-        box = page.locator("[data-testid=action-summary]").bounding_box()
+        box = page.locator(f"[data-testid={fold_testid}]").first.bounding_box()
         if not box or box["y"] + box["height"] > height:
-            out.append(f"{label}@{width}: frase de ação abaixo da dobra (termina em y={box and round(box['y'] + box['height'])}, dobra={height})")
+            out.append(f"{label}@{width}: [{fold_testid}] abaixo da dobra (termina em y={box and round(box['y'] + box['height'])}, dobra={height})")
     small = page.evaluate(
         """() => [...document.querySelectorAll('button, select, summary, [role=tab]')]
             .filter(e => e.offsetParent !== null && !e.closest('[hidden]'))
@@ -982,14 +1025,14 @@ def screenshots(env: Env, data: dict, shots_dir: Path, prefix: str, agent: str |
         page.screenshot(path=str(p))
         files.append(p.name)
 
+    me = "perfil=vendedor&nome=" + ag.replace(" ", "+")
     for w, h in SIZES:
-        with env.page("", w, h) as page:                       # inicio
+        with env.page("", w, h, profile=None) as page:         # inicio = tela de entrada "Quem é você?"
             ready(page)
-            layout += layout_problems(page, w, h, "inicio", above_fold=True)
+            layout += layout_problems(page, w, h, "inicio", above_fold=True, fold_testid="enter-vendedor")
             shot(page, "inicio", w)
-        with env.page("", w, h) as page:                       # vendedor
+        with env.page(me, w, h, profile=None) as page:         # vendedor ("Minha semana")
             ready(page)
-            select(page, "filter-agent", ag)
             layout += layout_problems(page, w, h, "vendedor", above_fold=True)
             shot(page, "vendedor", w)
             card = page.locator("[data-testid=deal-card]").first          # card-aberto (mesmo vendedor)
@@ -1000,7 +1043,7 @@ def screenshots(env: Env, data: dict, shots_dir: Path, prefix: str, agent: str |
             layout += layout_problems(page, w, h, "card-aberto")
             shot(page, "card-aberto", w)
         if tests:
-            with env.page(f"modo={tests[0]['date']}", w, h) as page:   # modo-teste
+            with env.page(f"{me}&modo={tests[0]['date']}", w, h, profile=None) as page:   # modo-teste (como vendedor)
                 ready(page)
                 layout += layout_problems(page, w, h, "modo-teste", above_fold=True)
                 shot(page, "modo-teste", w)
