@@ -34,7 +34,7 @@ O registro separa as duas coisas de propósito. Não atribuí a mim nenhuma deci
 - **Plano (equivalente ao Plan Mode):** [`plano_execucao_opus.md`](plano_execucao_opus.md), salvo sem edição.
 - **Revisões independentes:** [`06_revisao-independente.md`](06_revisao-independente.md), com dois relatórios integrais, triagem e correções.
 - **Conversa:** [`chat-exports/`](chat-exports/LEIA-ME.md).
-- **Screenshots:** [`screenshots/`](screenshots/). Os prefixos são `antes_`, `depois_` (3 atritos corrigidos) e `final_`, em 390 px e 1280 px, mais `antes-correcao-rosalina-` e `depois-correcao-rosalina-` (correção da curva).
+- **Screenshots:** [`screenshots/`](screenshots/). Os prefixos são `antes_`, `depois_` (3 atritos corrigidos) e `final_`, em 390 px e 1280 px, mais `antes-correcao-rosalina-` e `depois-correcao-rosalina-` (correção da curva). As visões por perfil e o design têm o [`08_visoes-e-design.md`](08_visoes-e-design.md), as três rodadas de screenshots em `screenshots/design-r1/`, `design-r2/` e `design-r3/` e o conjunto final `final-*.png`.
 - **Reprodução da fase 0:** [`scripts/`](scripts/eda.py) e [`outputs/`](outputs/).
 - **Decisões:** [`../docs/DECISIONS.md`](../docs/DECISIONS.md), com uma linha por decisão, a alternativa descartada e o motivo.
 - **Git:** um commit por bloco na branch `submission/rafael-pereira`.
