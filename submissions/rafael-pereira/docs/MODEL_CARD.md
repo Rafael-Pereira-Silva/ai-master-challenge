@@ -71,6 +71,7 @@ Leitura honesta:
 - **Regra de 31/03 escolhida depois de ver o protótipo.** A justificativa é a priori (DATA_QUALITY, seção 2), mas a escolha foi feita depois de o planejador ver o efeito em 28/02. Por isso 28/02 é reportado como sensibilidade.
 - **Reative fraco em fim de trimestre.** A lista teve 4% (30/06) e 5% (30/09) de ganhos nos cortes de fim de trimestre.
 - **Horizonte (90 dias) e largura da faixa** foram escolhidos sabendo do dataset e não tiveram sensibilidade medida.
+- **Limitação de acesso.** A ferramenta separa a visão do vendedor da do manager só na tela (separação de experiência, não de segurança): o `data.js` publicado contém os deals de todos os vendedores, e quem baixa o arquivo vê tudo. Com dados sintéticos e públicos isso é aceitável; com dados reais de clientes, não. O controle de acesso por papel (vendedor, manager e RevOps) está desenhado em `ARQUITETURA_PRODUCAO.md`, com o SQL ainda não executado, e é pré-requisito para qualquer uso fora do desafio.
 
 ## 6. Riscos e mitigação
 
@@ -80,6 +81,8 @@ Leitura honesta:
 | **Viés contra vendedores** | Um vendedor com muitos deals velhos parece "pior" e é cobrado por isso | O vendedor não entra no score. Há teste de permutação: trocar os vendedores de lugar não muda nenhum score (`test_permuting_sales_agent_changes_no_score`). Nenhuma tela mostra taxa de vitória por vendedor |
 | **Valor estático** | O valor esperado usa o preço de tabela, não o valor negociado | Nos 4.238 ganhos, a razão `close_value` / preço de tabela tem média 0,996, e a média por produto fica entre 0,985 e 1,004 (DATA_QUALITY, seção 4). Em CRM real, rever com o valor da proposta |
 | **Confiar numa ordem que errou na história** | O Foque de hoje parece mais seguro do que é | A interface mostra o modo teste, com o que o score teria dito em datas passadas e o que aconteceu (os resumos seguem os filtros); a ordem dentro do Foque é fraca e isso está nas Limitações |
+| **Dado de outro time exposto** | Qualquer pessoa que abre o arquivo `data.js` lê a carteira de todos os vendedores | Em produção, o dado fora do escopo do usuário nunca chega ao navegador: login com SSO e acesso por linha no banco, descritos em `ARQUITETURA_PRODUCAO.md`. Nesta versão, o aviso está na tela de entrada, no "Como funciona" e no README |
+| **Contagem por vendedor lida como desempenho** | O mapa do time mostra vivos, esfriando e zumbis por vendedor, e alguém usa isso para ranquear pessoas | O mapa é rotulado "higiene de carteira, não desempenho", não traz taxa de vitória nem ranking, e a ordem padrão é alfabética |
 | **Corrigir o modelo olhando o teste** | A curva v2 foi desenhada depois de ver o backtest, e passar no critério não prova que generalize | O critério foi mantido e reportado para as duas curvas, a mudança está declarada como pós-backtest, e o próximo teste honesto é com cortes novos (seção 7) |
 
 ## 7. Quando recalibrar

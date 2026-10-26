@@ -16,12 +16,18 @@ O que separa os deals do CRM é o frescor (há quanto tempo estão abertos), nã
 
 ## Solução
 
-Uma página estática, sem servidor, que o vendedor abre na segunda de manhã: escolhe o próprio nome e vê quatro listas (Foque, Reative, Limpe e Qualifique), cada deal com uma explicação de 2 a 4 frases, mais um "modo teste" que mostra o que o score teria recomendado numa data passada e o que de fato aconteceu. Por trás, um motor em Python (pandas, funções puras, pytest) gera os dados da página. Documentos: [escopo](docs/SCOPE.md), [qualidade dos dados](docs/DATA_QUALITY.md), [score e validação](docs/SCORING.md), [model card](docs/MODEL_CARD.md) e [decisões](docs/DECISIONS.md).
+Uma página estática, sem servidor, com duas visões. O **vendedor** abre "Minha semana" na segunda de manhã: escolhe o próprio nome e vê só os seus deals em quatro listas (Foque, Reative, Limpe e Qualifique), cada deal com uma explicação de 2 a 4 frases, ações salvas no navegador ("contatei", "agendei", "encerrar no CRM") e um simulador "e se eu fechar este?". O **manager** abre "Meu time": um mapa por vendedor (vivos, esfriando e zumbis, com o valor de cada grupo), a higiene da carteira e a pauta do 1:1, sem taxa de vitória nem ranking de vendedores. Há também um "modo teste", que mostra o que o score teria recomendado numa data passada e o que de fato aconteceu. Por trás, um motor em Python (pandas, funções puras, pytest) gera os dados da página. Documentos: [escopo](docs/SCOPE.md), [qualidade dos dados](docs/DATA_QUALITY.md), [score e validação](docs/SCORING.md), [model card](docs/MODEL_CARD.md) e [decisões](docs/DECISIONS.md).
 
 ### Como rodar (setup)
 
 1. **Abrir a ferramenta sem instalar nada.** Duplo-clique em [`solution/app/index.html`](solution/app/index.html) (funciona em `file://`, sem servidor e sem internet).
-2. **Link publicado (GitHub Pages):** https://rafael-pereira-silva.github.io/ai-master-challenge/submissions/rafael-pereira/solution/app/ (fica no ar depois que o Pages for ativado na publicação).
+2. **Link publicado (GitHub Pages):** https://rafael-pereira-silva.github.io/ai-master-challenge/submissions/rafael-pereira/solution/app/ (fica no ar depois que o Pages for ativado na publicação). Links diretos para o avaliador, um por visão:
+   - [Entrar como vendedor (ex.: Rosalina Dieter)](https://rafael-pereira-silva.github.io/ai-master-challenge/submissions/rafael-pereira/solution/app/#perfil=vendedor&nome=Rosalina+Dieter)
+   - [Entrar como manager (ex.: Celia Rouche)](https://rafael-pereira-silva.github.io/ai-master-challenge/submissions/rafael-pereira/solution/app/#perfil=manager&nome=Celia+Rouche)
+   - [Pauta do 1:1 da Rosalina Dieter, aberta pela Celia Rouche](https://rafael-pereira-silva.github.io/ai-master-challenge/submissions/rafael-pereira/solution/app/#perfil=manager&nome=Celia+Rouche&ver=Rosalina+Dieter&pauta=1)
+   - [Visão completa (RevOps e avaliação), com todos os filtros](https://rafael-pereira-silva.github.io/ai-master-challenge/submissions/rafael-pereira/solution/app/#perfil=revops)
+
+   **Atenção: nesta versão a separação entre vendedor e manager é de experiência, não de segurança.** O `data.js` contém os deals de todos os vendedores; escolher um nome só filtra a tela. A separação real (login e acesso por linha) está em [`docs/ARQUITETURA_PRODUCAO.md`](docs/ARQUITETURA_PRODUCAO.md).
 3. **Regenerar tudo a partir dos CSVs** (Python 3.11; testado com pandas 3.1, numpy 2.4, scipy 1.17 e pytest 9.1):
 
 ```
@@ -36,7 +42,10 @@ python -m scorer.build --reference-date 2017-12-31
 ```
 pip install -r requirements-dev.txt
 python tools/check_app.py --prefix final
+python tools/check_views.py
 ```
+
+O segundo script testa as visões por perfil: vendedor isolado, pauta do manager, totais contra o `data.js`, alternância de tema e acessibilidade com o axe-core nos dois temas. O Lighthouse não foi executado (a máquina de desenvolvimento não tinha Node).
 
 O build é determinístico: rodar duas vezes gera os mesmos bytes. A data de referência ("hoje", 31/12/2017) é um parâmetro, não está fixa no código.
 
@@ -46,7 +55,7 @@ O build é determinístico: rodar duas vezes gera os mesmos bytes. A data de ref
 2. **Os dados derrubaram a ideia óbvia.** Um score por atributos dá perto de 63% para todo deal. O que separa é o ciclo: nenhum deal foi ganho depois de 138 dias, e 81% dos Engaging já passaram disso. Antes de usar qualquer coisa, limpei o que quebra o join e o que vaza: "GTXPro" contra "GTX Pro" (1.480 deals sumiriam) e os 1.425 deals sem conta, todos abertos, que funcionariam como detector de zumbi ([qualidade dos dados](docs/DATA_QUALITY.md)).
 3. **O score.** Chance de ganho em 90 dias olhando só a idade do deal, vezes o preço de tabela, numa escala de 0 a 100. A curva cai com a idade desde o primeiro dia (faixas de idade com regressão isotônica) e é treinada só com as fotos do mesmo ponto do trimestre que a data do modelo. Os limites das listas saem da curva (Foque até a chance cair à metade da de um deal novo; Limpe quando ela fica abaixo de 2% ou o deal passa do maior ciclo já ganho), não de um "se idade > 138". O vendedor não entra, e nenhum atributo entrou depois do teste ([score e validação](docs/SCORING.md)).
 4. **Validação sempre no tempo.** Quatro cortes passados (30/06, 31/07, 31/08 e 30/09/2017), cada um com um modelo que só vê o que o CRM sabia naquele dia, contra três baselines: valor, recência e sorteio. O critério para "vencer" foi fixado antes do primeiro número e foi mantido na correção da curva. Um teste troca tudo o que acontece depois do corte por valores aleatórios e exige que o modelo e os scores não mudem.
-5. **Interface de decisão.** Frase de ação na primeira tela ("foque em N, reative M, limpe K"), uma lista por ação, explicação por deal e o modo teste, para a Head de RevOps ver o score contra a história antes de confiar nele.
+5. **Interface de decisão.** Tela de entrada "Quem é você?" (vendedor ou manager), frase de ação no topo ("foque em N, reative M, limpe K"), uma lista por ação, explicação por deal e o modo teste, para a Head de RevOps ver o score contra a história antes de confiar nele. O visual é sóbrio, em marinho, off-white e um único dourado de ação, inspirado (não copiado) na identidade do G4; os tokens, o contraste e as decisões estão em [`docs/DESIGN.md`](docs/DESIGN.md).
 
 ### Resultados / Findings
 
@@ -115,6 +124,18 @@ O Limpe tem zero ganhos nos quatro cortes do backtest, por construção do datas
 
 ![Tela inicial, versão para celular](process-log/screenshots/final_inicio_390.png)
 
+As duas visões depois de escolher o perfil (vendedor Rosalina Dieter e manager Celia Rouche), em computador e celular, e o tema escuro:
+
+![Visão do vendedor, versão para computador](process-log/screenshots/final-vendedor-1280.png)
+
+![Visão do vendedor, versão para celular](process-log/screenshots/final-vendedor-390.png)
+
+![Visão do manager, versão para computador](process-log/screenshots/final-manager-1280.png)
+
+![Visão do manager, versão para celular](process-log/screenshots/final-manager-390.png)
+
+![Visão do vendedor no tema escuro](process-log/screenshots/final-escuro-vendedor-1280.png)
+
 Atributos testados e descartados (um por vez, com a regra fixada antes): produto, região, setor e porte. A região parecia ajudar dentro da amostra de treino e piorou fora dela em três dos quatro cortes, que é o motivo de a validação ser temporal.
 
 ### Recomendações
@@ -138,6 +159,10 @@ Para a Head de RevOps, em ordem de prioridade:
 - **chat-exports parciais.** Só a sessão de orquestração no Claude Code tem export ([`process-log/chat-exports/`](process-log/chat-exports/sessao-orquestracao-claude-code.md)). A fase 0, feita no app do Claude, está registrada em narrativa, sem export.
 - **Git:** a máquina não tinha git nem gh. O repositório foi clonado e commitado com dulwich (biblioteca Python), por um helper fora da pasta; o autor dos commits é o Rafael, com o trailer `Co-Authored-By: Claude`.
 - **Interrupção por limite de API.** Os executores pararam entre 16:28 e 19:01 de 25/10/2026, no meio do bloco 3. O critério pré-registrado e o rascunho do SCORING já estavam gravados e nenhum resultado de backtest tinha sido visto antes da retomada ([log do bloco 3](process-log/03_bloco-3.md)).
+- **Separação de experiência, não de segurança.** A visão do vendedor e a do manager só filtram a tela: o `data.js` público contém os deals de todos os vendedores, e quem baixa o arquivo vê tudo. Isso é aceitável com dados sintéticos e públicos, mas não com dados reais de clientes. A arquitetura com login e acesso por linha (Supabase, Auth com SSO e Row-Level Security) está desenhada em [`docs/ARQUITETURA_PRODUCAO.md`](docs/ARQUITETURA_PRODUCAO.md), com o SQL marcado "não executado — validar" (a máquina não tinha Postgres nem Docker) e uma estimativa de esforço de migração.
+- **As marcações do vendedor ficam só no navegador.** "Contatei", "agendei" e "encerrar no CRM" vão para o `localStorage`: não chegam ao CRM, não são vistas pelo manager e somem se a pessoa limpar os dados do navegador. A tela avisa isso. O manager lê a carteira, não edita.
+- **Higiene de carteira não é desempenho.** O mapa do time conta deals por lista (vivos, esfriando e zumbis) e é ordenável, mas não traz taxa de vitória nem ranking de vendedores (decisão 4 do CLAUDE.md).
+- **Qualidade da interface medida em parte.** O axe-core rodou nos dois temas e em duas larguras, sem violações graves; o Lighthouse não rodou (sem Node), e a skill de design e o arquivo do Figma não estavam disponíveis, então o Figma serviu só como inspiração. O desenho da pauta do 1:1 e do simulador não foi testado com vendedores de verdade.
 - **GitHub Pages não ativado:** depende do usuário do GitHub do Rafael (marcado no setup).
 
 ---
@@ -169,7 +194,7 @@ Para a Head de RevOps, em ordem de prioridade:
 | A tese "frescor > atributos", depois que os dados derrubaram o meu plano inicial | Curva de chance por idade, score e explicações | Backtest temporal em 4 cortes contra 3 baselines, com critério e ajuste único fixados antes |
 | Tirar o vendedor do score (diferença compatível com ruído) | Implementação do score | Teste de permutação: trocar os vendedores de lugar não muda nenhum score |
 | "Nenhum número in-sample é resultado" e "nenhum número digitado à mão" | Limpeza, métricas e documentos | Teste que confere cada número da prosa contra os arquivos gerados; teste de mutação do futuro contra vazamento |
-| Não usar Streamlit; página estática que abre com duplo-clique | Interface e build | Playwright em `file://` com 27 checagens, inclusive contagens contra o SCORING |
+| Não usar Streamlit; página estática que abre com duplo-clique | Interface e build | Playwright em `file://` com dezenas de checagens, inclusive contagens contra o SCORING, mais uma bateria própria para as visões por perfil e o axe-core |
 | Não publicar nada em meu nome sem mim | Commits locais e texto do PR | O push, o GitHub Pages e o PR ficaram reservados para mim |
 | Revisão independente e "não maquie resultado" | Correções apontadas pelo revisor | Modelo, parâmetros e métrica congelados no bloco 6: crítica de modelagem vira limitação documentada, não ajuste pós-hoc. Depois, ao usar a ferramenta como vendedor, pedi a troca da curva, que ficou declarada como mudança pós-backtest, com a versão antiga ao lado |
 
