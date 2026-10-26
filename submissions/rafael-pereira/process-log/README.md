@@ -24,6 +24,8 @@ Este índice liga cada pergunta que a banca faz (README do repositório e `submi
 | Blocos 0 a 6: decisões técnicas dentro das regras | Claude, marcadas "decisão autônoma do Claude", uma por linha | [`../docs/DECISIONS.md`](../docs/DECISIONS.md) |
 | Durante a execução: paralelizar, retomar depois da cota, ajustar modelo e esforço | Rafael | [`chat-exports/sessao-orquestracao-claude-code.md`](chat-exports/sessao-orquestracao-claude-code.md) (linha do tempo no topo) |
 | Revisão final da narrativa e das evidências, publicação | Rafael | [`07_revisao-do-rafael.md`](07_revisao-do-rafael.md) |
+| Uso da página publicada como vendedor, detecção da curva em patamar e pedido de correção | Rafael (a implementação foi delegada) | [`07_correcao-curva.md`](07_correcao-curva.md), screenshots `antes-correcao-*` e `depois-correcao-*` |
+| Visões por perfil, escolha da opção A com a limitação declarada, opção B mapeada e direção visual | Rafael, por especificação escrita (a execução foi delegada) | [`../PROMPT_VISOES_E_DESIGN.md`](../PROMPT_VISOES_E_DESIGN.md), [`08_visoes-e-design.md`](08_visoes-e-design.md), [`../docs/ARQUITETURA_PRODUCAO.md`](../docs/ARQUITETURA_PRODUCAO.md) |
 | Uso da página publicada como vendedor e pedido de correção da curva de chance (mudança pós-backtest) | Rafael pediu; execução pelo Claude Sonnet (subagente executor) | [`07_correcao-curva.md`](07_correcao-curva.md) |
 
 O registro separa as duas coisas de propósito. Não atribuí a mim nenhuma decisão que a IA tomou, nem o contrário.

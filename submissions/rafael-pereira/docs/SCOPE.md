@@ -65,6 +65,15 @@ A dor real é alocação de tempo: não "qual deal tem mais chance", e sim "onde
 - **Interface decide.** A frase de ação ("foque em N, reative M, limpe K") aparece na primeira tela, no celular e no computador; as contagens batem com o SCORING (Playwright); 3 atritos reais corrigidos, com screenshots de antes e depois.
 - **Código mantível.** Motor separado da interface, funções puras, testes; nenhum número escrito à mão (testes comparam prosa e arquivos gerados).
 
+## Atualização depois da primeira entrega
+
+- **Visões por perfil.** A tela agora abre em "Quem é você?":
+  - o vendedor vê só a própria semana;
+  - o manager vê o mapa do time, a pauta do 1:1 e a higiene de carteira, sem taxa de vitória nem ranking por vendedor;
+  - RevOps vê tudo.
+- **Segregação real de dados continua fora do escopo da versão estática.** A separação entre vendedores é de experiência, não de segurança, e está declarada na interface. O desenho de produção, com login e Row-Level Security, está em [ARQUITETURA_PRODUCAO.md](ARQUITETURA_PRODUCAO.md).
+- **Curva de chance corrigida depois do backtest**, a partir da revisão do Rafael. Ver [SCORING.md](SCORING.md).
+
 ## 7. Riscos e premissas
 
 **Premissas**
