@@ -57,7 +57,8 @@ def test_titles_appear_once_and_in_template_order(text):
 
 def test_template_separators_and_last_line(text):
     assert text.count("\n---\n") >= 4  # depois de Sobre mim, do resumo, de Limitações e de Evidências
-    assert text.rstrip().splitlines()[-1] == "_Submissão enviada em: [preencher ao abrir o PR]_"
+    last = text.rstrip().splitlines()[-1]
+    assert re.fullmatch(r"_Submissão enviada em: (\[preencher ao abrir o PR\]|\d{2}/\d{2}/\d{4})_", last), last
 
 
 def test_executive_summary_has_at_most_five_sentences(text):
