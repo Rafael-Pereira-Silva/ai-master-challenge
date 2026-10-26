@@ -231,4 +231,4 @@ Tudo está nesta pasta. O índice, que liga cada pergunta da banca ao arquivo qu
 
 ---
 
-_Submissão enviada em: [preencher ao abrir o PR]_
+_Submissão enviada em: 25/10/2026_
